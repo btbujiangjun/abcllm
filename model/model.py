@@ -18,7 +18,7 @@ GPT_CONFIG_124M = {
     "qkv_bias": False,
     "lr": 4e-5,
     "decay": 0.1,
-    "device": torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    "device": torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
 }
 
 class GPTModel(nn.Module):
