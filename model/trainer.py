@@ -54,14 +54,7 @@ class Trainer():
 
             self.num_epochs += 1
 
-            print(f"generate_text:'
-                {self.wrapper.generate(
-                    self.model, 
-                    start_context, 
-                    self.tokenizer, 
-                    50
-                )}'"
-            )
+            print(f"generate_text:'{self.wrapper.generate(self.model, start_context, self.tokenizer, 50)}'")
         
         return train_losses, val_losses, track_tokens_seen
 

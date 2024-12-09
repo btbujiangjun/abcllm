@@ -47,16 +47,7 @@ trainer = Trainer(model, tokenizer)
 
 dump_path = "gpt2_test.ckpt"
 trainer.load(dump_path)
-trainer.load(dump_path)
-trainer.load(dump_path)
-trainer.load(dump_path)
-trainer.load(dump_path)
-trainer.load(dump_path)
-trainer.load(dump_path)
-trainer.load(dump_path)
-trainer.load(dump_path)
 
-trainer.load(dump_path)
 trainer.train(
     train_loader
     ,val_loader
