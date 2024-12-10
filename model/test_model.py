@@ -46,7 +46,6 @@ print(mw.generate(model, "红烧肉怎么做", tokenizer, 50))
 trainer = Trainer(model, tokenizer)
 
 dump_path = "gpt2_test.ckpt"
-trainer.load(dump_path)
 
 trainer.train(
     train_loader

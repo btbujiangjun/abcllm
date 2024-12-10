@@ -49,8 +49,8 @@ class Trainer():
                         f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
                     )
 
-                if globel_step % dump_steps == 0:
-                    self.dump(f"tmp_steps_{globel_step}.ckpt")
+                if global_step % dump_steps == 0:
+                    self.dump(f"tmp_steps_{global_step}.ckpt")
 
             self.num_epochs += 1
 
@@ -105,7 +105,7 @@ class Trainer():
         print(f"dump ckpt {ckpt} successfully.")
 
     def load(self, ckpt, dtype=torch.bfloat16):
-        checkpoint = torch.load(ckpt, map_location="cpu", weights_only=True)
+        checkpoint = torch.load(ckpt, map_location="cpu")
         if self.model.cfg != checkpoint["model_cfg"]:       
             self.model = GPTModel(checkpoint["model_cfg"])
         self.num_epochs = checkpoint["num_epochs"] 
