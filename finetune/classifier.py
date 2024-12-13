@@ -22,7 +22,7 @@ class ClassifierFinetune():
         model.out_head = torch.nn.Linear(
             in_features=model.cfg["emb_dim"]
             , out_features=num_classes
-        ).to(model.device())
+        ).to(model.device)
 
         #making last transformer block and final LayerNorm trainable
         for param in model.trf_blocks[-1].parameters():
@@ -91,8 +91,8 @@ class ClassifierFinetune():
             if i >= num_batches:
                 break
 
-            input_batch = input_batch.to(self.model.device())
-            target_batch = target_batch.to(self.model.device())
+            input_batch = input_batch.to(self.model.device)
+            target_batch = target_batch.to(self.model.device)
 
             with torch.no_grad():
                 logits = self.model(input_batch)[:, -1, :] #logits of last output token
@@ -104,8 +104,8 @@ class ClassifierFinetune():
         return correct_predictions / num_examples
 
     def batch_loss(self, input_batch, target_batch):
-        input_batch = input_batch.to(self.model.device())
-        target_batch = target_batch.to(self.model.device())
+        input_batch = input_batch.to(self.model.device)
+        target_batch = target_batch.to(self.model.device)
         logits = self.model(input_batch)[:, -1, :]
         loss = torch.nn.functional.cross_entropy(logits, target_batch)
         return loss
@@ -154,7 +154,7 @@ class ClassifierFinetune():
         input_ids = input_ids[:max_length]
         #pad if too short
         input_ids += [pad_token_id] * (max_length - len(input_ids))
-        input_tensor = torch.tensor(input_ids, device=self.model.device()).unsqueeze(0)
+        input_tensor = torch.tensor(input_ids, device=self.model.device).unsqueeze(0)
 
         self.model.eval()
         with torch.no_grad():
@@ -180,7 +180,7 @@ class ClassifierFinetune():
             self.model = GPTModel(model_cfg)
         self._modify_model(self.model, model_cfg["num_classes"])
         
-        model_device = self.model.device()
+        model_device = self.model.device
         with torch.no_grad():
             for name, param in self.model.named_parameters():
                 if name in checkpoint["model_state_dict"]:

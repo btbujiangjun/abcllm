@@ -25,7 +25,7 @@ class Trainer():
             ,dump_steps=10_000):
 
         train_losses, val_losses, track_tokens_seen = [], [], []
-        tokens_seen, global_step = 0, -1
+        tokens_seen, global_step = 0, 0
 
         for epoch in range(num_epochs):
             self.model.train()
@@ -45,7 +45,7 @@ class Trainer():
                     track_tokens_seen.append(tokens_seen)
 
                     print(
-                        f"Epoch {epoch+1} (Step {global_step:06d}):"
+                        f"Epoch {epoch+1} (Step {global_step:06d}, tokens_seen:{tokens_seen:012d}):"
                         f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
                     )
 
@@ -60,8 +60,8 @@ class Trainer():
 
 
     def __batch_loss(self, input_batch, target_batch):
-        input_batch = input_batch.to(self.model.device())
-        target_batch = target_batch.to(self.model.device())
+        input_batch = input_batch.to(self.model.device)
+        target_batch = target_batch.to(self.model.device)
 
         logits = self.model(input_batch)
         loss = nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
@@ -110,7 +110,7 @@ class Trainer():
             self.model = GPTModel(checkpoint["model_cfg"])
         self.num_epochs = checkpoint["num_epochs"] 
 
-        device = self.model.device()
+        device = self.model.device
         with torch.no_grad():
             for name, param in self.model.named_parameters():
                 if name in checkpoint["model_state_dict"]:

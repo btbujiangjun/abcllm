@@ -55,8 +55,8 @@ def print_eta(start_time, book_start_time, index, total_files):
 
 
 def _batch_loss(model, input_batch, target_batch):
-    input_batch = input_batch.to(model.device())
-    target_batch = target_batch.to(model.device())
+    input_batch = input_batch.to(model.device)
+    target_batch = target_batch.to(model.device)
     logits = model(input_batch)
     loss = nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
     return loss
@@ -88,7 +88,7 @@ def _evaluate(model, train_loader, val_loader, eval_iter):
 def _generate(model, tokenizer, start_context):
     model.eval()
     context_size = model.pos_emb.weight.shape[0]
-    encoded = _text_to_token_ids(start_context, tokenizer).to(model.device())
+    encoded = _text_to_token_ids(start_context, tokenizer).to(model.device)
     with torch.no_grad():
         token_ids = generate_text_simple(
             model=model, idx=encoded,

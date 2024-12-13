@@ -14,8 +14,8 @@ from pretrain_gpt2 import PretrainGPT2
 torch.manual_seed(123)
 model = GPTModel(GPT_CONFIG_124M).to(torch.bfloat16)
 print(model)
-print(model.param_size())
-print(model.size_mb())
+print(model.param_size)
+print(model.size_mb)
 file = "../tokenizer/the-verdict.txt"
 tokenizer = GPT2Tokenizer()
 loader = GPTDataLoader(tokenizer)
@@ -50,7 +50,7 @@ dump_path = "gpt2_test.ckpt"
 trainer.train(
     train_loader
     ,val_loader
-    ,num_epochs=1
+    ,num_epochs=5
     ,eval_freq=5
     ,eval_iter=5
     ,start_context="Every effort moves you"
@@ -61,7 +61,7 @@ trainer.load(dump_path)
 trainer.train(
     train_loader
     ,val_loader
-    ,num_epochs=1
+    ,num_epochs=5
     ,eval_freq=5
     ,eval_iter=5
     ,start_context="miss you"

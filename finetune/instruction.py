@@ -59,8 +59,8 @@ class InstructionFinetune():
         return train_losses, val_losses, track_tokens_seen
 
     def batch_loss(self, input_batch, target_batch):
-        input_batch = input_batch.to(self.model.device())
-        target_batch = target_batch.to(self.model.device())
+        input_batch = input_batch.to(self.model.device)
+        target_batch = target_batch.to(self.model.device)
         logits = self.model(input_batch)
         loss = torch.nn.functional.cross_entropy(
             logits.flatten(0, 1),
@@ -120,7 +120,7 @@ class InstructionFinetune():
         if self.model.cfg != checkpoint["model_cfg"]:
             self.model = GPTModel(checkpoint["model_cfg"])
 
-        model_device = self.model.device()
+        model_device = self.model.device
         with torch.no_grad():
             for name, param in self.model.named_parameters():
                 state_dict = checkpoint["model_state_dict"]

@@ -46,22 +46,26 @@ class GPTModel(nn.Module):
             ,lr=self.cfg["lr"]
             ,weight_decay=self.cfg["decay"]
         )
-        
-    def device(self):
+
+    @property        
+    def device(self)->str:
         return next(self.parameters()).device
 
-    def param_size(self):
+    @property
+    def param_size(self)->float:
         return sum(p.numel() for p in self.parameters())
 
-    def size_byte(self):
+    @property
+    def size_byte(self)->float:
         return sum(p.numel() * torch.tensor([], dtype=p.dtype).element_size() for p in self.parameters())
 
-    def size_mb(self):
-        return (f"{self.size_byte() / (1024 * 1024):.2f}")
+    @property
+    def size_mb(self)->float:
+        return (f"{self.size_byte / (1024 * 1024):.2f}")
 
     def forward(self, batch):
         batch_size, seq_len = batch.shape
-        batch = batch.to(self.device())
+        batch = batch.to(self.device)
         tok_embeds = self.tok_emb(batch)
         pos_embeds = self.pos_emb(torch.arange(seq_len, device=batch.device))
 
@@ -167,7 +171,7 @@ class ModelWrapper:
             ,eos_id=None):
         if context_length is None:
             context_length = model.cfg["context_length"]
-        ids = ids.to(model.device())
+        ids = ids.to(model.device)
 
         for _ in range(max_generate_tokens):
             with torch.no_grad():
