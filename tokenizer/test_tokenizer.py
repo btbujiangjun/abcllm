@@ -1,4 +1,4 @@
-from tokenizer import SimpleTokenizer, GPT2Tokenizer
+from tokenizer import SimpleTokenizer, GPT2Tokenizer, SPTokenizer
 
 tokenizer = SimpleTokenizer.from_file("the-verdict.txt")
 
@@ -8,7 +8,7 @@ ids = tokenizer.encode(text)
 print("origin:", text)
 print("ids:", ids)
 print("decode:", tokenizer.decode(ids))
-print("tokenizer eos_id:", tokenizer.eos_id())
+print("tokenizer eos_id:", tokenizer.eos_id)
 print("tokenizer vocab_size:", len(tokenizer.int_to_str))
 
 with open("the-verdict.txt", "r", encoding="utf-8") as f:
@@ -16,11 +16,21 @@ with open("the-verdict.txt", "r", encoding="utf-8") as f:
 gpt2_tokenizer = GPT2Tokenizer()
 enc_text = gpt2_tokenizer.encode(raw_text)
 print("gpt2 tokenizer:", enc_text)
-print("gpt2 tokenizer eos_id:", gpt2_tokenizer.eos_id())
-print("gpt2 tokenizer eos_text:", gpt2_tokenizer.decode([gpt2_tokenizer.eos_id()]))
+print("gpt2 tokenizer eos_id:", gpt2_tokenizer.eos_id)
+print("gpt2 tokenizer eos_text:", gpt2_tokenizer.decode([gpt2_tokenizer.eos_id]))
 
 dec_text = gpt2_tokenizer.decode(enc_text)
 print("gpt2 decode text:", dec_text)
 
 print(enc_text == dec_text)
+
+model_file = "ChatGLMTokenizer/tokenizer.model"
+sp_tokenizer = SPTokenizer(model_file)
+text = "我爱北京天安门"
+ids = sp_tokenizer.encode(text)
+print(ids)
+
+decode_text = sp_tokenizer.decode(ids)
+print("decode text:", decode_text)
+print(text == decode_text)
 
