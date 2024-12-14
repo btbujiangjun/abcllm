@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 from model.model import GPT_CONFIG_124M,GPTModel
-from tokenizer.tokenizer import GPT2Tokenizer
+from tokenizer.tokenizer import SPTokenizer
 from dataset.dataset import GPTDataLoader
 
 
@@ -30,28 +30,6 @@ def plot_losses(epochs_seen, tokens_seen, train_losses, val_losses, output_dir):
 
     fig.tight_layout()  # Adjust layout to make room
     plt.savefig(output_dir / "losses.pdf")
-
-def convert_time(seconds):
-    hours, rem = divmod(seconds, 3600)
-    minutes, seconds = divmod(rem, 60)
-    return int(hours), int(minutes), int(seconds)
-
-
-def print_eta(start_time, book_start_time, index, total_files):
-    book_end_time = time.time()  # End time of processing this book
-    elapsed_time = book_end_time - book_start_time
-    total_elapsed_time = book_end_time - start_time
-    books_remaining = total_files - index
-    average_time_per_book = total_elapsed_time / index
-    eta = average_time_per_book * books_remaining
-
-    book_h, book_m, book_s = convert_time(elapsed_time)
-    total_h, total_m, total_s = convert_time(total_elapsed_time)
-    eta_h, eta_m, eta_s = convert_time(eta)
-
-    print(f"Book processed {book_h}h {book_m}m {book_s}s"
-          f"\nTotal time elapsed {total_h}h {total_m}m {total_s}s"
-          f"\nETA for remaining books: {eta_h}h {eta_m}m {eta_s}s")
 
 
 def _batch_loss(model, input_batch, target_batch):
@@ -124,7 +102,7 @@ def generate_text_simple(model, idx, max_new_tokens, context_size):
 
 
 def _text_to_token_ids(text, tokenizer):
-    encoded = tokenizer.encode(text, allowed_special={'<|endoftext|>'})
+    encoded = tokenizer.encode(text)
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)  # Add batch dimension
     return encoded_tensor
 
@@ -133,10 +111,19 @@ def _token_ids_to_text(token_ids, tokenizer):
     flat = token_ids.squeeze(0)  # Remove batch dimension
     return tokenizer.decode(flat.tolist())
 
-def train_model_simple(model, n_epochs,
-                       eval_freq, eval_iter, print_sample_iter, start_context,
-                       output_dir, save_ckpt_freq, tokenizer,
-                       batch_size=1024, train_ratio=0.90):
+def train_model_simple(model,
+        preprocess_train_files,
+        preprocess_val_files,
+        n_epochs,
+        eval_freq, 
+        eval_iter, 
+        print_sample_iter, 
+        start_context,
+        output_dir, 
+        save_ckpt_freq, 
+        tokenizer,
+        batch_size=1024 
+    ):
 
     train_losses, val_losses, track_tokens_seen = [], [], []
     tokens_seen = 0
@@ -144,52 +131,55 @@ def train_model_simple(model, n_epochs,
     start_time = time.time()
     dataloader = GPTDataLoader(tokenizer, num_workers=0)
 
+    train_loader = dataloader.preprocess_file_dataloader(
+        preprocess_train_files,
+        batch_size=batch_size,
+        max_length=GPT_CONFIG_124M["context_length"],
+        stride=GPT_CONFIG_124M["context_length"]
+    )
+    val_loader = dataloader.preprocess_file_dataloader(
+        preprocess_val_files,
+        batch_size=batch_size,
+        max_length=GPT_CONFIG_124M["context_length"],
+        stride=GPT_CONFIG_124M["context_length"]
+    )
+
     try:
         for epoch in range(n_epochs):
+            book_start_time = time.time()
+            print("Training ...")
+            model.train()
+            for input_batch, target_batch in train_loader:
+                model.optimizer.zero_grad()
+                loss = _batch_loss(model, input_batch, target_batch)
+                loss.backward()
+                model.optimizer.step()
+                tokens_seen += input_batch.numel()
+                global_step += 1
 
-            # Iterate over the books in the training corpus
-            for index, file_path in enumerate(all_files, 1):
-                book_start_time = time.time()
-                print(f"Tokenizing file {index} of {total_files}: {file_path}")
-                train_loader, val_loader = dataloader.file_train_val_dataloader(
-                    file_path,
-                    train_ratio=train_ratio,
-                    batch_size=batch_size,
-                    max_length=GPT_CONFIG_124M["context_length"],
-                    stride=GPT_CONFIG_124M["context_length"]
-                )
-                print("Training ...")
-                model.train()
-                for input_batch, target_batch in train_loader:
-                    model.optimizer.zero_grad()
-                    loss = _batch_loss(model, input_batch, target_batch)
-                    loss.backward()
-                    model.optimizer.step()
-                    tokens_seen += input_batch.numel()
-                    global_step += 1
+                # Optional evaluation step
+                if global_step % eval_freq == 0:
+                    train_loss, val_loss = _evaluate(
+                        model, 
+                        train_loader, 
+                        val_loader, 
+                        eval_iter
+                    )
+                    train_losses.append(train_loss)
+                    val_losses.append(val_loss)
+                    track_tokens_seen.append(tokens_seen)
+                    print(f"Ep {epoch+1} (Step {global_step}): Train tokens {tokens_seen}, "
+                            f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
-                    # Optional evaluation step
-                    if global_step % eval_freq == 0:
-                        train_loss, val_loss = _evaluate(
-                            model, train_loader, val_loader, eval_iter)
-                        train_losses.append(train_loss)
-                        val_losses.append(val_loss)
-                        track_tokens_seen.append(tokens_seen)
-                        print(f"Ep {epoch+1} (Step {global_step}): "
-                              f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                # Generate text passage
+                if global_step % print_sample_iter == 0:
+                    _generate(model, tokenizer, start_context)
 
-                    # Generate text passage
-                    if global_step % print_sample_iter == 0:
-                        _generate(
-                            model, tokenizer, start_context
-                        )
+                if global_step % save_ckpt_freq == 0:
+                    file_name = output_dir / f"model_bk_{global_step}.pth"
+                    torch.save(model.state_dict(), file_name)
+                    print(f"Saved {file_name}")
 
-                    if global_step % save_ckpt_freq == 0:
-                        file_name = output_dir / f"model_pg_{global_step}.pth"
-                        torch.save(model.state_dict(), file_name)
-                        print(f"Saved {file_name}")
-
-                print_eta(start_time, book_start_time, index, total_files)
 
     except KeyboardInterrupt:
         file_name = output_dir / f"model_pg_{global_step}_interrupted.pth"
@@ -203,9 +193,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='GPT Model Training Configuration')
 
-    parser.add_argument('--data_dir', type=str, default='data/gutenberg',
+    parser.add_argument('--train_data', type=str, default='data/pretrain_train_data.bin',
                         help='Directory containing the training data')
-    parser.add_argument('--output_dir', type=str, default='model_checkpoints',
+    parser.add_argument('--val_data', type=str, default='data/pretrain_val_data.bin',
+                        help='Directory containing the validate data')
+    parser.add_argument('--output_dir', type=str, default='baidubaike_checkpoints',
                         help='Directory where the model checkpoints will be saved')
     parser.add_argument('--n_epochs', type=int, default=1,
                         help='Number of epochs to train the model')
@@ -213,7 +205,7 @@ if __name__ == "__main__":
                         help='Iterations between printing sample outputs')
     parser.add_argument('--eval_freq', type=int, default=100,
                         help='Frequency of evaluations during training')
-    parser.add_argument('--save_ckpt_freq', type=int, default=100_000,
+    parser.add_argument('--save_ckpt_freq', type=int, default=1000,
                         help='Frequency of saving model checkpoints during training')
     parser.add_argument('--lr', type=float, default=5e-4,
                         help='Learning rate for the optimizer')
@@ -227,24 +219,21 @@ if __name__ == "__main__":
 
     torch.manual_seed(123)
     model = GPTModel(GPT_CONFIG_124M)
-    tokenizer = GPT2Tokenizer()
+    tokenizer = SPTokenizer("tokenizer/ChatGLMTokenizer/tokenizer.model")
 
-    data_dir = args.data_dir
-    all_files = [os.path.join(path, name) for path, subdirs, files
-                 in os.walk(data_dir) for name in files if name.endswith((".txt"))]
-    total_files = len(all_files)
+    train_data = args.train_data
+    val_data = args.val_data
+    #all_files = [os.path.join(path, name) for path, subdirs, files
+    #             in os.walk(data_dir) for name in files if name.endswith((".txt"))]
 
-    if total_files == 0:
-        print("No training text files found. Make sure you "
-              "selected the correct input directory")
-        quit()
-    print("Total files:", total_files)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     train_losses, val_losses, tokens_seen = train_model_simple(
         model,
+        [train_data],
+        [val_data],
         batch_size=args.batch_size,
         n_epochs=args.n_epochs,
         eval_freq=args.eval_freq,
@@ -252,7 +241,7 @@ if __name__ == "__main__":
         print_sample_iter=args.print_sample_iter,
         output_dir=output_dir,
         save_ckpt_freq=args.save_ckpt_freq,
-        start_context="Every effort moves you",
+        start_context="我爱北京",
         tokenizer=tokenizer
     )
 
@@ -260,4 +249,4 @@ if __name__ == "__main__":
     plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses, output_dir)
 
     torch.save(model.state_dict(), output_dir / "model_pg_final.pth")
-    print(f"Maximum GPU memory allocated: {torch.mps.max_memory_allocated() / 1e9:.2f} GB")
+    #print(f"Maximum GPU memory allocated: {torch.mps.max_memory_allocated() / 1e9:.2f} GB")

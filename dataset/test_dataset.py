@@ -10,7 +10,7 @@ from tokenizer.tokenizer import GPT2Tokenizer, SimpleTokenizer, SPTokenizer
 #    raw_text = f.read()
 
 file = "../tokenizer/the-verdict.txt"
-process_file = "../data/pretrain_data.bin"
+process_file = "../data/pretrain_val_data.bin"
 
 tokenizer = GPT2Tokenizer()
 

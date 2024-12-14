@@ -92,8 +92,8 @@ class GPTDataset(Dataset):
         max_length = self.max_length
         stride = self.stride
         
-        input_batch = torch.tensor(self.token_ids[idx * stride: idx * stride + max_length])
-        target_batch = torch.tensor(self.token_ids[idx * stride + 1 : idx * stride + max_length + 1])
+        input_batch = torch.tensor(self.token_ids[idx * stride: idx * stride + max_length], dtype=torch.int32)
+        target_batch = torch.tensor(self.token_ids[idx * stride + 1 : idx * stride + max_length + 1], dtype=torch.int32)
         
         return input_batch, target_batch
 
@@ -138,8 +138,8 @@ class GPTDataLoader():
             ,encoding="utf-8"
             ,batch_size=4
             ,max_length=256
-            ,stride=128
-            ,shuffle=True
+            ,stride=256
+            ,shuffle=False
             ,drop_last=True):
         
         dataset = GPTDataset.from_file(
@@ -157,6 +157,33 @@ class GPTDataLoader():
             drop_last=drop_last,
             num_workers=self.num_workers
         )
+
+    def preprocess_file_dataloader(self
+            ,preprocess_files: List[str]
+            ,batch_size=4
+            ,max_length=256
+            ,stride=256
+            ,shuffle=False
+            ,drop_last=True
+            ,memmap=True
+            ,dtype="uint16"):
+        
+        dataset = GPTDataset.from_preprocess_files(
+            preprocess_files
+            ,max_length=max_length
+            ,stride=stride
+            ,memmap=memmap
+            ,dtype=dtype
+        )
+
+        return self._create(
+            dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=drop_last,
+            num_workers=self.num_workers
+        )
+        
 
     def text_train_val_dataloader(self
             ,text
