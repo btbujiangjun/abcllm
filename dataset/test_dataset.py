@@ -4,11 +4,44 @@ import json
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dataset import GPTDataset, GPTDataLoader, LabeledDataset, InstructionDataset
-from tokenizer.tokenizer import GPT2Tokenizer, SimpleTokenizer
+from tokenizer.tokenizer import GPT2Tokenizer, SimpleTokenizer, SPTokenizer
 
 #with open("../tokenizer/the-verdict.txt", "r", encoding="utf-8") as f:
 #    raw_text = f.read()
 
+file = "../tokenizer/the-verdict.txt"
+process_file = "../data/pretrain_data.bin"
+
+tokenizer = GPT2Tokenizer()
+
+dataset = GPTDataset.from_files([file], tokenizer, stride=2560)
+
+'''
+print("len:", len(dataset))
+print("self.len:", dataset.len)
+print("token_size:", dataset.token_size)
+for i, (b, t) in enumerate(dataset):
+    #b, t = d
+    print("i:", i)
+    print("b:", b)
+    print("t:", t)
+'''
+
+tokenizer = SPTokenizer("../tokenizer/ChatGLMTokenizer/tokenizer.model")
+process_dataset = GPTDataset.from_preprocess_files(
+    [process_file], 
+    max_length=4, 
+    stride=1, 
+    memmap=True)
+print(len(process_dataset))
+for i,(b,t) in enumerate(process_dataset):
+    if i > 10:
+        break
+    print(f"train:   {b.tolist()}{tokenizer.decode(b.tolist())}")
+    print(f"target:  {t.tolist()}{tokenizer.decode(t.tolist())}")
+
+
+'''
 file = "../tokenizer/the-verdict.txt"
 tokenizer = GPT2Tokenizer()
 loader = GPTDataLoader(tokenizer)
@@ -65,4 +98,6 @@ with open("val-instruction-data.json", "w") as file:
 
 instruction_dataset = InstructionDataset("instruction-data.json", tokenizer)
 for d in instruction_dataset.data:
-    print(InstructionDataset.instruction_format_input(d))
+    print(InstructionDataset.format_input(d))
+
+'''

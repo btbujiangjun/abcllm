@@ -2,52 +2,100 @@
 # base module for LLM task
 # GPTDateset: input is max_length sub_sequence and target shift 1 based input sequence
 #
+import os
 import json
+import warnings
+from typing import List
 import pandas as pd
+import numpy as np
 import torch
 from functools import partial
 from torch.utils.data import Dataset, DataLoader
 
 class GPTDataset(Dataset):
     def __init__(self
-            ,text
-            ,tokenizer
-            ,max_length
-            ,stride):
-        self.input_ids = []
-        self.target_ids = []
-
-        token_ids = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
-
+            ,token_ids
+            ,max_length=256
+            ,stride=1):
         if len(token_ids) < max_length - 1:
             raise ValueError(f"token size({len(token_ids)}) is less then max_length({max_length}).")
+       
+        self.max_length = max_length
+        self.stride = stride
 
-        for i in range(0, len(token_ids) - max_length, stride):
-            input_chunk = token_ids[i: i + max_length]
-            target_chunk = token_ids[i + 1: i + max_length + 1]
-            self.input_ids.append(torch.tensor(input_chunk))
-            self.target_ids.append(torch.tensor(target_chunk))
+        self.token_ids = token_ids
+        self.token_size = len(token_ids)
+        self.len = int((len(token_ids) - max_length) / stride) + 1
 
     @classmethod
-    def from_file(cls
-            ,file
+    def from_text(cls
+            ,text:str
             ,tokenizer
-            ,max_length
-            ,stride
-            ,encoding="utf-8"):
-        with open(file, "r", encoding=encoding) as f:
-            raw_text = f.read()
+            ,max_length=256
+            ,stride=1):
+        token_ids = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
+        return cls(token_ids, max_length, stride)
 
-        return cls(raw_text, tokenizer, max_length, stride)
+    @classmethod
+    def from_files(cls
+            ,files:List[str]
+            ,tokenizer
+            ,max_length=256
+            ,stride=1
+            ,encoding="utf-8"):
+        text = ""
+        for file in files:
+            if os.path.isfile(file):
+                with open(file, "r", encoding=encoding) as f:
+                    text += f.read()
+            else:
+                warnings.warn(f"{file} is not exists and skip it.")
+
+        token_ids = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
+        
+        return cls(token_ids, max_length, stride)
+    
+    @classmethod
+    def from_preprocess_files(cls
+            ,preprocess_files: List[str]
+            ,max_length=256
+            ,stride=1
+            ,memmap=False
+            ,dtype="uint16"):
+        token_ids = []
+    
+        if memmap:
+            if len(preprocess_files) > 1:
+                warnings.warn(f"memmap mode only support the first file:{preprocess_files[0]}.")
+            with open(preprocess_files[0], 'r') as f:
+                nbytes = f.seek(0, 2)
+                token_size = f.tell() // np.dtype(dtype).itemsize
+            token_ids = np.memmap(preprocess_files[0], mode='r', dtype=dtype, shape=(token_size,))
+        else:
+            for file in preprocess_files:
+                if os.path.isfile(file):
+                    with open(file,'rb') as f:
+                        token_ids.extend(np.fromfile(f, dtype=np.dtype(dtype)))
+                else:
+                    warnings.warn(f"{file} is not exists and skip it.")
+        
+        return cls(token_ids.tolist(), max_length, stride)
+                
 
     def __len__(self):
-        return len(self.input_ids)
+        return self.len
 
     def __getitem__(self, idx):
-        if idx >= len(self):
-            raise IndexError(f"Index {idx} is out of bounds for dataset of size {len(self)}")
-
-        return self.input_ids[idx], self.target_ids[idx]
+        if(idx >= len(self)):
+            raise IndexError(f"Index {idx} is Out Of Bounds for dataset of size {len(self)}.")
+        
+        max_length = self.max_length
+        stride = self.stride
+        
+        input_batch = torch.tensor(self.token_ids[idx * stride: idx * stride + max_length])
+        target_batch = torch.tensor(self.token_ids[idx * stride + 1 : idx * stride + max_length + 1])
+        
+        return input_batch, target_batch
 
 
 class GPTDataLoader():
@@ -70,15 +118,13 @@ class GPTDataLoader():
         )
 
     def text_dataloader(self
-            ,text 
+            ,text: str 
             ,batch_size=4
             ,max_length=256
             ,stride=128
             ,shuffle=True
             ,drop_last=True):
-
-        dataset = GPTDataset(text, self.tokenizer, max_length, stride)
-        
+        dataset = GPTDataset.from_text(text, self.tokenizer, max_length, stride)
         return self._create(
             dataset,
             batch_size=batch_size,
@@ -123,8 +169,8 @@ class GPTDataLoader():
         train_text = text[:split_idx]
         val_text = text[split_idx:]
 
-        train_dataset = GPTDataset(train_text, self.tokenizer, max_length, stride)
-        val_dataset = GPTDataset(val_text, self.tokenizer, max_length, stride)
+        train_dataset = GPTDataset.from_text(train_text, self.tokenizer, max_length, stride)
+        val_dataset = GPTDataset.from_text(val_text, self.tokenizer, max_length, stride)
         
         train_loader = self._create(
             train_dataset
@@ -170,13 +216,14 @@ class LabeledDataset(Dataset):
             ,max_length=None
             ,pad_token_id=None
             ,text_field="Text"):
+        assert os.path.isfile(csv_file), cvs_file
         self.data = pd.read_csv(csv_file)
         self.encoded_ids = [
             tokenizer.encode(text) for text in self.data[text_field]
         ]
 
         if pad_token_id is None:
-            pad_token_id = tokenizer.eos_id()
+            pad_token_id = tokenizer.eos_id
 
         if max_length is None:
             self.max_length = self._longest_encoded_length()
@@ -191,7 +238,7 @@ class LabeledDataset(Dataset):
             for encoded_id in self.encoded_ids
         ]
 
-    def __getitem__(self, index, label_field="Label"):
+    def __getitem__(self, index: int, label_field="Label"):
         encoded_id = self.encoded_ids[index]
         label = self.data.iloc[index][label_field]
         
@@ -200,10 +247,10 @@ class LabeledDataset(Dataset):
             , torch.tensor(label, dtype=torch.long)
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
 
-    def _longest_encoded_length(self):
+    def _longest_encoded_length(self) -> int:
         return max([len(encoded_id) for encoded_id in self.encoded_ids])
 
 class InstructionDataset(Dataset):
