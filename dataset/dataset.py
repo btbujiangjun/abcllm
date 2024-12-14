@@ -79,7 +79,7 @@ class GPTDataset(Dataset):
                 else:
                     warnings.warn(f"{file} is not exists and skip it.")
         
-        return cls(token_ids.tolist(), max_length, stride)
+        return cls(token_ids, max_length, stride)
                 
 
     def __len__(self):

@@ -30,7 +30,7 @@ for i, (b, t) in enumerate(dataset):
 tokenizer = SPTokenizer("../tokenizer/ChatGLMTokenizer/tokenizer.model")
 process_dataset = GPTDataset.from_preprocess_files(
     [process_file], 
-    max_length=4, 
+    max_length=256, 
     stride=1, 
     memmap=True)
 print(len(process_dataset))
