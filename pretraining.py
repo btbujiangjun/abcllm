@@ -106,13 +106,14 @@ if __name__ == "__main__":
             temperature=args.temperature,
             top_k=args.top_k
         )
+    
+        epochs_tensor = torch.linspace(0, args.num_epochs, len(train_losses))
+        plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses, output_dir)
+
+        torch.save(model.state_dict(), output_dir / "model_pg_final.pth")
     except KeyboardInterrupt:
         file_name = output_dir / f"model_final_interrupted.pth"
         torch.save(model.state_dict(), file_name)
         print(f"Saved {file_name}")
 
-    epochs_tensor = torch.linspace(0, args.num_epochs, len(train_losses))
-    plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses, output_dir)
-
-    torch.save(model.state_dict(), output_dir / "model_pg_final.pth")
     #print(f"Maximum GPU memory allocated: {torch.mps.max_memory_allocated() / 1e9:.2f} GB")
