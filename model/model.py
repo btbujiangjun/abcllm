@@ -9,7 +9,7 @@ import torch.nn as nn
 from attention.attention import MultiHeadAttention
 
 GPT_CONFIG_124M = {
-    "vocab_size": 50257,
+    "vocab_size": 64789, #50257,
     "context_length": 256,
     "emb_dim": 768,
     "n_heads": 12,
@@ -217,7 +217,7 @@ class ModelWrapper:
         encode_tensor = torch.tensor(encode_ids).unsqueeze(0)
 
         if eos_id is None:
-            eos_id = tokenizer.eos_id()
+            eos_id = tokenizer.eos_id
 
         out_ids = self.__generate(
             model

@@ -2,15 +2,14 @@ import os
 import sys
 import json
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from dataset import GPTDataset, GPTDataLoader, LabeledDataset, InstructionDataset
+from dataset.dataset import GPTDataset, GPTDataLoader, LabeledDataset, InstructionDataset
 from tokenizer.tokenizer import GPT2Tokenizer, SimpleTokenizer, SPTokenizer
 
 #with open("../tokenizer/the-verdict.txt", "r", encoding="utf-8") as f:
 #    raw_text = f.read()
 
-file = "../tokenizer/the-verdict.txt"
-process_file = "../data/pretrain_val_data.bin"
+file = "./data/the-verdict.txt"
+process_file = "./data/pretrain_val_data.bin"
 
 tokenizer = GPT2Tokenizer()
 
@@ -27,7 +26,7 @@ for i, (b, t) in enumerate(dataset):
     print("t:", t)
 '''
 
-tokenizer = SPTokenizer("../tokenizer/ChatGLMTokenizer/tokenizer.model")
+tokenizer = SPTokenizer("./data/ChatGLMTokenizer/tokenizer.model")
 process_dataset = GPTDataset.from_preprocess_files(
     [process_file], 
     max_length=256, 
@@ -42,7 +41,7 @@ for i,(b,t) in enumerate(process_dataset):
 
 
 '''
-file = "../tokenizer/the-verdict.txt"
+file = "./data/the-verdict.txt"
 tokenizer = GPT2Tokenizer()
 loader = GPTDataLoader(tokenizer)
 train_dataloader, val_dataloader = loader.file_train_val_dataloader(file, train_ratio=0.8, max_length=8, stride=7)

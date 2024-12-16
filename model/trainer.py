@@ -6,7 +6,7 @@
 
 import torch
 import torch.nn as nn
-from model import GPTModel, GPT_CONFIG_124M, ModelWrapper
+from model.model import GPTModel, GPT_CONFIG_124M, ModelWrapper
 
 class Trainer():
     def __init__(self, model, tokenizer):

@@ -43,14 +43,15 @@ class GPTDataset(Dataset):
             ,max_length=256
             ,stride=1
             ,encoding="utf-8"):
-        text = ""
+        text = []
         for file in files:
             if os.path.isfile(file):
                 with open(file, "r", encoding=encoding) as f:
-                    text += f.read()
+                    text.append(f.read())
             else:
                 warnings.warn(f"{file} is not exists and skip it.")
-
+        
+        text = "".join(text)
         token_ids = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
         
         return cls(token_ids, max_length, stride)
@@ -62,8 +63,9 @@ class GPTDataset(Dataset):
             ,stride=1
             ,memmap=False
             ,dtype="uint16"):
+        assert len(preprocess_files) >= 1, f"preprocess file is none."
+        
         token_ids = []
-    
         if memmap:
             if len(preprocess_files) > 1:
                 warnings.warn(f"memmap mode only support the first file:{preprocess_files[0]}.")
@@ -89,11 +91,15 @@ class GPTDataset(Dataset):
         if(idx >= len(self)):
             raise IndexError(f"Index {idx} is Out Of Bounds for dataset of size {len(self)}.")
         
-        max_length = self.max_length
-        stride = self.stride
-        
-        input_batch = torch.tensor(self.token_ids[idx * stride: idx * stride + max_length], dtype=torch.int32)
-        target_batch = torch.tensor(self.token_ids[idx * stride + 1 : idx * stride + max_length + 1], dtype=torch.int32)
+        start_index = idx * self.stride
+        input_batch = torch.tensor(
+            self.token_ids[start_index: start_index + self.max_length], 
+            dtype=torch.int32
+        )
+        target_batch = torch.tensor(
+            self.token_ids[start_index + 1 : start_index + 1 + self.max_length], 
+            dtype=torch.int32
+        )
         
         return input_batch, target_batch
 
@@ -141,8 +147,11 @@ class GPTDataLoader():
             ,stride=256
             ,shuffle=False
             ,drop_last=True):
-        
-        dataset = GPTDataset.from_file(
+
+        if not isinstance(file, list):
+            file = [file]
+
+        dataset = GPTDataset.from_files(
             file                        
             ,self.tokenizer
             ,max_length
