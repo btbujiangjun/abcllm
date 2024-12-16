@@ -169,6 +169,7 @@ def train_model_simple(model,
                     val_losses.append(val_loss)
                     track_tokens_seen.append(tokens_seen)
                     print(f"Ep {epoch+1} (Step {global_step}): Train tokens {tokens_seen}, "
+                            f" {tokens_seen/1000/(time.time() - book_start_time):.2f}k tokens/sec, "
                             f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
                 # Generate text passage
