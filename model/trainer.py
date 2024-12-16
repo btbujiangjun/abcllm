@@ -14,6 +14,7 @@ class Trainer():
         self.tokenizer = tokenizer
         self.wrapper = ModelWrapper()
         self.num_epochs = 0
+        self.global_step = 0
 
     def train(self
             ,train_loader
@@ -30,7 +31,7 @@ class Trainer():
             ,eos_id=None):
 
         train_losses, val_losses, track_tokens_seen = [], [], []
-        tokens_seen, global_step = 0, -1
+        tokens_seen, self.global_step = 0, -1
         start_time = time.time()
         
         for epoch in range(num_epochs):
@@ -42,24 +43,24 @@ class Trainer():
                 loss.backward()
                 self.model.optimizer.step()
                 tokens_seen += input_batch.numel()
-                global_step += 1
+                self.global_step += 1
 
-                if global_step % eval_freq == 0:
+                if self.global_step % eval_freq == 0:
                     train_loss, val_loss = self.evaluate(train_loader, val_loader, eval_iter)
                     train_losses.append(train_loss)
                     val_losses.append(val_loss)
                     track_tokens_seen.append(tokens_seen)
 
                     print(
-                        f"Epoch {epoch+1} Step {global_step}, Tokens_seen:{tokens_seen}, "
+                        f"Epoch {epoch+1} Step {self.global_step}, Tokens_seen:{tokens_seen}, "
                         f"{tokens_seen/1000/(time.time() - start_time):.2f}k tokens/sec, "
                         f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
                     )
 
-                if global_step % dump_steps == 0:
-                    self.dump(f"{dump_path}/tmp_steps_{global_step}.ckpt")
+                if self.global_step % dump_steps == 0:
+                    self.dump(f"{dump_path}/tmp_steps_{self.global_step}.ckpt")
 
-                if global_step % sample_iter == 0:
+                if self.global_step % sample_iter == 0:
                     generate_text = self.wrapper.generate(
                         self.model, 
                         start_context, 
@@ -115,6 +116,7 @@ class Trainer():
         torch.save({
             "model_cfg": self.model.cfg
             ,"num_epochs": self.num_epochs
+            ,"global_step": self.global_step
             ,"model_state_dict": self.model.state_dict()
             ,"optimizer_state_dict": self.model.optimizer.state_dict()
             }, ckpt
@@ -126,6 +128,7 @@ class Trainer():
         if self.model.cfg != checkpoint["model_cfg"]:       
             self.model = GPTModel(checkpoint["model_cfg"])
         self.num_epochs = checkpoint["num_epochs"] 
+        self.global_step = checkpoint["global_step"]
 
         device = self.model.device
         with torch.no_grad():
@@ -140,4 +143,4 @@ class Trainer():
 
         self.model.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         
-        print(f"load ckpt {ckpt} with {self.num_epochs} epochs successfully.")
+        print(f"load ckpt {ckpt} with {self.num_epochs} epochs global_step {self.global_step} successfully.")
