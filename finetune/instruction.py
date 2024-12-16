@@ -65,7 +65,7 @@ class InstructionFinetune():
         logits = self.model(input_batch)
         loss = torch.nn.functional.cross_entropy(
             logits.flatten(0, 1),
-            target_batch.flatten()
+            target_batch.flatten().long()
         )
 
         return loss

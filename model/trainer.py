@@ -81,7 +81,7 @@ class Trainer():
         target_batch = target_batch.to(self.model.device)
 
         logits = self.model(input_batch)
-        loss = nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
+        loss = nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten().long())
         
         return loss
 
@@ -122,7 +122,7 @@ class Trainer():
         print(f"dump ckpt {ckpt} successfully.")
 
     def load(self, ckpt, dtype=torch.bfloat16):
-        checkpoint = torch.load(ckpt, map_location="cpu")
+        checkpoint = torch.load(ckpt, weights_only=True, map_location="cpu")
         if self.model.cfg != checkpoint["model_cfg"]:       
             self.model = GPTModel(checkpoint["model_cfg"])
         self.num_epochs = checkpoint["num_epochs"] 

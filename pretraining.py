@@ -80,6 +80,7 @@ if __name__ == "__main__":
     train_loader = dataloader.preprocess_file_dataloader(
         [args.train_data],
         batch_size=args.batch_size,
+        shuffle=True,
         max_length=GPT_CONFIG_124M["context_length"],
         stride=GPT_CONFIG_124M["context_length"]
     )
@@ -110,10 +111,10 @@ if __name__ == "__main__":
         epochs_tensor = torch.linspace(0, args.num_epochs, len(train_losses))
         plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses, output_dir)
 
-        torch.save(model.state_dict(), output_dir / "model_pg_final.pth")
+        trainer.dump(output_dir / "model_pg_final.pth")
     except KeyboardInterrupt:
-        file_name = output_dir / f"model_final_interrupted.pth"
-        torch.save(model.state_dict(), file_name)
+        file_name = output_dir / "model_final_interrupted.pth"
+        trainer.dump(file_name)
         print(f"Saved {file_name}")
 
     #print(f"Maximum GPU memory allocated: {torch.mps.max_memory_allocated() / 1e9:.2f} GB")
