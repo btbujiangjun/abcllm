@@ -2,8 +2,6 @@ import os
 import sys
 import torch
 
-#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-#sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataset.dataset import GPTDataset, GPTDataLoader
 from tokenizer.tokenizer import GPT2Tokenizer, SimpleTokenizer
 from attention.attention import MultiHeadAttention

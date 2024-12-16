@@ -59,21 +59,11 @@ test_loader = DataLoader(
 )
 
 pretrain_gpt2 = PretrainGPT2()
-model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "../model/gpt2")
+model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
 finetune = ClassifierFinetune(model, tokenizer, num_classes=2)
 #finetune.finetune(train_loader, val_loader, num_epochs=2)
 
 ckpt="spam_finetune.ckpt"
-finetune.load(ckpt)
-finetune.load(ckpt)
-finetune.load(ckpt)
-finetune.load(ckpt)
-finetune.load(ckpt)
-finetune.load(ckpt)
-finetune.load(ckpt)
-finetune.load(ckpt)
-finetune.load(ckpt)
-finetune.load(ckpt)
 finetune.dump(ckpt)
 finetune.load(ckpt)
 

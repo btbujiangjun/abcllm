@@ -18,7 +18,7 @@ batch_size = 8
 
 tokenizer = GPT2Tokenizer()
 
-train_dataset = InstructionDataset("../dataset/train-instruction-data.json", tokenizer)
+train_dataset = InstructionDataset("./data/finetune/train-instruction-data.json", tokenizer)
 train_loader = DataLoader(
     train_dataset,
     batch_size=batch_size,
@@ -28,7 +28,7 @@ train_loader = DataLoader(
     num_workers=num_workers
 )
 
-val_dataset = InstructionDataset("../dataset/val-instruction-data.json", tokenizer)
+val_dataset = InstructionDataset("./data/finetune/val-instruction-data.json", tokenizer)
 val_loader = DataLoader(
     val_dataset,
     batch_size=batch_size,
@@ -40,10 +40,10 @@ val_loader = DataLoader(
 
 
 pretrain_gpt2 = PretrainGPT2()
-model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "../model/gpt2")
+model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
 finetune = InstructionFinetune(model, tokenizer)
 
-ckpt="instruct_finetune.ckpt"
+ckpt="./data/tmp/instruct_finetune.ckpt"
 finetune.load(ckpt)
 finetune.finetune(
     train_loader, 
