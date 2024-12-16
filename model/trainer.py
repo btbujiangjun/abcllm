@@ -122,7 +122,7 @@ class Trainer():
         print(f"dump ckpt {ckpt} successfully.")
 
     def load(self, ckpt, dtype=torch.bfloat16):
-        checkpoint = torch.load(ckpt, weights_only=True, map_location="cpu")
+        checkpoint = torch.load(ckpt, weights_only=False, map_location="cpu")
         if self.model.cfg != checkpoint["model_cfg"]:       
             self.model = GPTModel(checkpoint["model_cfg"])
         self.num_epochs = checkpoint["num_epochs"] 
