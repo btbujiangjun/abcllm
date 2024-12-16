@@ -213,7 +213,7 @@ class ModelWrapper:
             ,temperature=0.0
             ,top_k=None
             ,eos_id=None):
-        encode_ids = tokenizer.encode(start_context, allowed_special={'<|endoftext|>'})
+        encode_ids = tokenizer.encode(start_context)
         encode_tensor = torch.tensor(encode_ids).unsqueeze(0)
 
         if eos_id is None:

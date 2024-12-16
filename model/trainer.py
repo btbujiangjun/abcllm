@@ -3,7 +3,7 @@
 #    
 #
 #
-
+import time
 import torch
 import torch.nn as nn
 from model.model import GPTModel, GPT_CONFIG_124M, ModelWrapper
@@ -22,11 +22,17 @@ class Trainer():
             ,eval_freq
             ,eval_iter
             ,start_context
-            ,dump_steps=10_000):
+            ,sample_iter=10_000
+            ,dump_path=""
+            ,dump_steps=10_000
+            ,temperature=0.0
+            ,top_k=None
+            ,eos_id=None):
 
         train_losses, val_losses, track_tokens_seen = [], [], []
-        tokens_seen, global_step = 0, 0
-
+        tokens_seen, global_step = 0, -1
+        start_time = time.time()
+        
         for epoch in range(num_epochs):
             self.model.train()
 
@@ -45,16 +51,27 @@ class Trainer():
                     track_tokens_seen.append(tokens_seen)
 
                     print(
-                        f"Epoch {epoch+1} (Step {global_step:06d}, tokens_seen:{tokens_seen:012d}):"
+                        f"Epoch {epoch+1} Step {global_step}, Tokens_seen:{tokens_seen}, "
+                        f"{tokens_seen/1000/(time.time() - start_time):.2f}k tokens/sec, "
                         f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
                     )
 
                 if global_step % dump_steps == 0:
-                    self.dump(f"tmp_steps_{global_step}.ckpt")
+                    self.dump(f"{dump_path}/tmp_steps_{global_step}.ckpt")
 
+                if global_step % sample_iter == 0:
+                    generate_text = self.wrapper.generate(
+                        self.model, 
+                        start_context, 
+                        self.tokenizer, 
+                        self.model.cfg["context_length"],
+                        temperature=temperature,
+                        top_k=top_k,
+                        eos_id=eos_id
+                    )
+                    print("generate_text:", generate_text)
+       
             self.num_epochs += 1
-
-            print(f"generate_text:'{self.wrapper.generate(self.model, start_context, self.tokenizer, 50)}'")
         
         return train_losses, val_losses, track_tokens_seen
 
