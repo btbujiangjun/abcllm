@@ -1,5 +1,5 @@
 import torch
-from attention import SelfAttention, CausalAttention, MultiHeadAttention
+from attention.attention import SelfAttention, CausalAttention, MultiHeadAttention
 
 
 inputs = torch.tensor(

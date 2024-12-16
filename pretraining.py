@@ -193,11 +193,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='GPT Model Training Configuration')
 
-    parser.add_argument('--train_data', type=str, default='data/pretrain_train_data.bin',
+    parser.add_argument('--train_data', type=str, default='./data/pretrain_train_data.bin',
                         help='Directory containing the training data')
-    parser.add_argument('--val_data', type=str, default='data/pretrain_val_data.bin',
+    parser.add_argument('--val_data', type=str, default='./data/pretrain_val_data.bin',
                         help='Directory containing the validate data')
-    parser.add_argument('--output_dir', type=str, default='baidubaike_checkpoints',
+    parser.add_argument('--output_dir', type=str, default='./data/tmp/baidubaike_checkpoints',
                         help='Directory where the model checkpoints will be saved')
     parser.add_argument('--n_epochs', type=int, default=1,
                         help='Number of epochs to train the model')
@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
     torch.manual_seed(123)
     model = GPTModel(GPT_CONFIG_124M)
-    tokenizer = SPTokenizer("tokenizer/ChatGLMTokenizer/tokenizer.model")
+    tokenizer = SPTokenizer("./data/ChatGLMTokenizer/tokenizer.model")
 
     train_data = args.train_data
     val_data = args.val_data
@@ -241,7 +241,7 @@ if __name__ == "__main__":
         print_sample_iter=args.print_sample_iter,
         output_dir=output_dir,
         save_ckpt_freq=args.save_ckpt_freq,
-        start_context="我爱北京",
+        start_context="光合作用是怎么回事",
         tokenizer=tokenizer
     )
 

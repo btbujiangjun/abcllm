@@ -148,7 +148,7 @@ class ClassifierFinetune():
             max_length = min(max_length, self.model.pos_emb.weight.shape[0])
         
         if pad_token_id is None:
-            pad_token_id = self.tokenizer.eos_id()
+            pad_token_id = self.tokenizer.eos_id
 
         #truncate if too long
         input_ids = input_ids[:max_length]

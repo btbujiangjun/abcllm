@@ -3,11 +3,10 @@ import sys
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dataset.dataset import InstructionDataset, INSTRUCTION_COLLATE_FN
 from tokenizer.tokenizer import GPT2Tokenizer
 from model.pretrain_gpt2 import PretrainGPT2
-from instruction import InstructionFinetune
+from finetune.instruction import InstructionFinetune
 
 
 text = """"It's the last he painted, you know," Mrs. Gisburn Jiang said with pardonable pride."""
@@ -43,8 +42,9 @@ pretrain_gpt2 = PretrainGPT2()
 model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
 finetune = InstructionFinetune(model, tokenizer)
 
-ckpt="./data/tmp/instruct_finetune.ckpt"
-finetune.load(ckpt)
+ckpt="./data/tmp/finetune/instruct_finetune.ckpt"
+if os.path.isfile(ckpt):
+    finetune.load(ckpt)
 finetune.finetune(
     train_loader, 
     val_loader,

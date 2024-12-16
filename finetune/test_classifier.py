@@ -3,11 +3,10 @@ import sys
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dataset.dataset import GPTDataset, GPTDataLoader, LabeledDataset
 from tokenizer.tokenizer import GPT2Tokenizer, SimpleTokenizer
 from model.pretrain_gpt2 import PretrainGPT2
-from classifier import ClassifierFinetune
+from finetune.classifier import ClassifierFinetune
 
 
 text = """"It's the last he painted, you know," Mrs. Gisburn Jiang said with pardonable pride."""
@@ -19,19 +18,19 @@ batch_size = 8
 tokenizer = GPT2Tokenizer()
 
 train_dataset = LabeledDataset(
-    csv_file="../dataset/train.csv",
+    csv_file="./data/finetune/train.csv",
     max_length=None,
     tokenizer=tokenizer
 )
 
 val_dataset = LabeledDataset(
-    csv_file="../dataset/validation.csv",
+    csv_file="./data/finetune/validation.csv",
     max_length=train_dataset.max_length,
     tokenizer=tokenizer
 )
 
 test_dataset = LabeledDataset(
-    csv_file="../dataset/test.csv",
+    csv_file="./data/finetune/test.csv",
     max_length=train_dataset.max_length,
     tokenizer=tokenizer
 )
@@ -63,7 +62,7 @@ model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
 finetune = ClassifierFinetune(model, tokenizer, num_classes=2)
 #finetune.finetune(train_loader, val_loader, num_epochs=2)
 
-ckpt="spam_finetune.ckpt"
+ckpt="./data/tmp/finetune/spam_finetune.ckpt"
 finetune.dump(ckpt)
 finetune.load(ckpt)
 

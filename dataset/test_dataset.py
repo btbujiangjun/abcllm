@@ -30,7 +30,7 @@ tokenizer = SPTokenizer("./data/ChatGLMTokenizer/tokenizer.model")
 process_dataset = GPTDataset.from_preprocess_files(
     [process_file], 
     max_length=256, 
-    stride=1, 
+    stride=256, 
     memmap=True)
 print(len(process_dataset))
 for i,(b,t) in enumerate(process_dataset):
@@ -40,7 +40,6 @@ for i,(b,t) in enumerate(process_dataset):
     print(f"target:  {t.tolist()}{tokenizer.decode(t.tolist())}")
 
 
-'''
 file = "./data/the-verdict.txt"
 tokenizer = GPT2Tokenizer()
 loader = GPTDataLoader(tokenizer)
@@ -63,21 +62,22 @@ for inputs, targets in dataloader:
     print(f"inputs:{inputs}")
     print(f"targets:{targets}")
 
+'''
 
 train_dataset = LabeledDataset(
-    csv_file="train.csv",
+    csv_file="./data/finetune/train.csv",
     max_length=None,
     tokenizer=tokenizer
 )
 
 val_dataset = LabeledDataset(
-    csv_file="validation.csv",
+    csv_file="./data/finetune/validation.csv",
     max_length=train_dataset.max_length,
     tokenizer=tokenizer
 )
 
 test_dataset = LabeledDataset(
-    csv_file="test.csv",
+    csv_file="./data/finetune/test.csv",
     max_length=train_dataset.max_length,
     tokenizer=tokenizer
 )
@@ -86,17 +86,21 @@ for text, label in test_dataset:
     print(text)
     print(label)
 
-with open("instruction-data.json", "r", encoding="utf-8") as f:
+with open("./data/finetune/instruction-data.json", "r", encoding="utf-8") as f:
     data = json.load(f)
 split_idx = int(len(data)* 0.9)
-with open("train-instruction-data.json", "w") as file:
+with open("./data/finetune/train-instruction-data.json", "w") as file:
     json.dump(data[:split_idx], file, indent=4)
-with open("val-instruction-data.json", "w") as file:
+with open("./data/finetune/val-instruction-data.json", "w") as file:
     json.dump(data[split_idx:], file, indent=4)
 
 
-instruction_dataset = InstructionDataset("instruction-data.json", tokenizer)
+
+instruction_dataset = InstructionDataset("./data/finetune/instruction-data.json", tokenizer)
 for d in instruction_dataset.data:
     print(InstructionDataset.format_input(d))
 
 '''
+
+
+

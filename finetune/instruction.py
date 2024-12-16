@@ -4,6 +4,7 @@
 #
 #
 
+import os
 import torch
 from dataset.dataset import InstructionDataset
 from model.model import GPTModel, ModelWrapper
@@ -101,7 +102,7 @@ class InstructionFinetune():
             input_text, 
             self.tokenizer, 
             max_tokens, 
-            eos_id=self.tokenizer.eos_id()
+            eos_id=self.tokenizer.eos_id
         )
         return input_text, response_text[len(input_text):].replace("\n### Response:", "").strip()
 
@@ -116,6 +117,8 @@ class InstructionFinetune():
         print(f"save {ckpt} successfully.")
 
     def load(self, ckpt, dtype=torch.bfloat16):
+        assert os.path.isfile(ckpt), f"checkpoint {ckpt} is not exists." 
+
         checkpoint = torch.load(ckpt, map_location="cpu", weights_only=True)
         if self.model.cfg != checkpoint["model_cfg"]:
             self.model = GPTModel(checkpoint["model_cfg"])
