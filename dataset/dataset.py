@@ -94,13 +94,9 @@ class GPTDataset(Dataset):
         start_index = idx * self.stride
         input_batch = torch.tensor(
             (self.token_ids[start_index: start_index + self.max_length]).astype('int32')
-	#, 
-        #    dtype=torch.int32
         )
         target_batch = torch.tensor(
             (self.token_ids[start_index + 1 : start_index + 1 + self.max_length]).astype('int32')
-#, 
-#            dtype=torch.int32
         )
         
         return input_batch, target_batch
