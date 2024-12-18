@@ -108,11 +108,15 @@ class Trainer():
                     val_losses.append(val_loss)
                     track_tokens_seen.append(tokens_seen)
 
+                    delta_tokens_seen = tokens_seen
+                    if (len(track_tokens_seen) > 0):
+                        delta_token_seen = tokens_seen - track_tokens_seen[-1]
                     print(
-                        f"Epoch {epoch + 1} Step {self.global_step}, Tokens_seen:{tokens_seen}, "
-                        f"{tokens_seen/1000/(time.time() - start_time):.2f}k tokens/sec, "
+                        f"Epoch {epoch + 1} Step {self.global_step}, Tokens_seen:{tokens_seen} of {train_loader.token_size}, "
+                        f"{delta_tokens_seen/1000/(time.time() - start_time):.2f}K tokens/sec, "
                         f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
                     )
+                    start_time = time.time()
 
                 # Save checkpoint
                 if self.global_step % dump_steps == 0:
@@ -129,7 +133,7 @@ class Trainer():
                         top_k=top_k,
                         eos_id=eos_id
                     )
-                    print(f"Generated text:generate_text}")
+                    print(f"Generated text:{generate_text}")
        
             self.num_epochs += 1
         
@@ -216,7 +220,7 @@ class Trainer():
         )
         print(f"dump ckpt {ckpt} successfully.")
 
-    def load(self, ckpti:str, dtype=torch.bfloat16):
+    def load(self, ckpt:str, dtype=torch.bfloat16):
         """
         Load model checkpoint.
 

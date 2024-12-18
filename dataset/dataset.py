@@ -102,23 +102,33 @@ class GPTDataset(Dataset):
         return input_batch, target_batch
 
 
+class ABCDataLoader(DataLoader):
+    def __init__(self, *args, token_size=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.token_size = token_size
+
 class GPTDataLoader():
     def __init__(self, tokenizer, num_workers=0):
         self.tokenizer = tokenizer
         self.num_workers = num_workers
-  
+
+    @property
+    def token_size()->int:
+        return self.total_token
+
     def _create(self
             ,dataset
             ,batch_size
             ,shuffle
             ,drop_last
             ,num_workers):
-        return DataLoader(
+        return ABCDataLoader(
             dataset,
             batch_size=batch_size,
             shuffle=shuffle,
             drop_last=drop_last,
-            num_workers=self.num_workers
+            num_workers=self.num_workers,
+            token_size=dataset.token_size
         )
 
     def text_dataloader(self
