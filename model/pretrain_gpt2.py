@@ -36,68 +36,76 @@ class PretrainGPT2:
         model, model_size = self.init_model(choose_model)
         
         params = self.__load_params(ckpt_dir, model_size)
-        model.pos_emb.weight = self.__assign(model.pos_emb.weight, params['wpe'])
-        model.tok_emb.weight = self.__assign(model.tok_emb.weight, params['wte'])
+        #model.pos_emb.weight = self.__assign(model.pos_emb.weight, params['wpe'])
+        #model.tok_emb.weight = self.__assign(model.tok_emb.weight, params['wte'])
+        self._assign(model.pos_emb.weight, params['wpe'])
+        self._assign(model.tok_emb.weight, params['wte'])
 
         for b in range(len(params["blocks"])):
             q_w, k_w, v_w = np.split(
                 (params["blocks"][b]["attn"]["c_attn"])["w"], 3, axis=-1)
-            model.trf_blocks[b].att.w_query.weight = self.__assign(
-                model.trf_blocks[b].att.w_query.weight, q_w.T)
-            model.trf_blocks[b].att.w_key.weight = self.__assign(
-                model.trf_blocks[b].att.w_key.weight, k_w.T)
-            model.trf_blocks[b].att.w_value.weight = self.__assign(
-                model.trf_blocks[b].att.w_value.weight, v_w.T)
+            self._assign(model.trf_blocks[b].multi_attention.w_query.weight, q_w.T)
+            self._assign(model.trf_blocks[b].multi_attention.w_key.weight, k_w.T)
+            self._assign(model.trf_blocks[b].multi_attention.w_value.weight, v_w.T)
 
-            q_b, k_b, v_b = np.split(
-                (params["blocks"][b]["attn"]["c_attn"])["b"], 3, axis=-1)
-            model.trf_blocks[b].att.w_query.bias = self.__assign(
-                model.trf_blocks[b].att.w_query.bias, q_b)
-            model.trf_blocks[b].att.w_key.bias = self.__assign(
-                model.trf_blocks[b].att.w_key.bias, k_b)
-            model.trf_blocks[b].att.w_value.bias = self.__assign(
-                model.trf_blocks[b].att.w_value.bias, v_b)
+            q_b, k_b, v_b = np.split((params["blocks"][b]["attn"]["c_attn"])["b"], 3, axis=-1)
+            
+            self._assign(model.trf_blocks[b].multi_attention.w_query.bias, q_b)
+            self._assign(model.trf_blocks[b].multi_attention.w_key.bias, k_b)
+            self._assign(model.trf_blocks[b].multi_attention.w_value.bias, v_b)
 
-            model.trf_blocks[b].att.out_proj.weight = self.__assign(
-                model.trf_blocks[b].att.out_proj.weight,
-                params["blocks"][b]["attn"]["c_proj"]["w"].T)
-            model.trf_blocks[b].att.out_proj.bias = self.__assign(
-                model.trf_blocks[b].att.out_proj.bias,
-                params["blocks"][b]["attn"]["c_proj"]["b"])
+            self._assign(
+                model.trf_blocks[b].multi_attention.out_proj.weight
+                , params["blocks"][b]["attn"]["c_proj"]["w"].T
+            )
+            self._assign(
+                model.trf_blocks[b].multi_attention.out_proj.bias
+                , params["blocks"][b]["attn"]["c_proj"]["b"]
+            )
 
-            model.trf_blocks[b].ff.layers[0].weight = self.__assign(
-                model.trf_blocks[b].ff.layers[0].weight,
-                params["blocks"][b]["mlp"]["c_fc"]["w"].T)
-            model.trf_blocks[b].ff.layers[0].bias = self.__assign(
-                model.trf_blocks[b].ff.layers[0].bias,
-                params["blocks"][b]["mlp"]["c_fc"]["b"])
-            model.trf_blocks[b].ff.layers[2].weight = self.__assign(
-                model.trf_blocks[b].ff.layers[2].weight,
-                params["blocks"][b]["mlp"]["c_proj"]["w"].T)
-            model.trf_blocks[b].ff.layers[2].bias = self.__assign(
-                model.trf_blocks[b].ff.layers[2].bias,
-                params["blocks"][b]["mlp"]["c_proj"]["b"])
+            self._assign(
+                model.trf_blocks[b].ff.layers[0].weight
+                , params["blocks"][b]["mlp"]["c_fc"]["w"].T
+            )
+            self._assign(
+                model.trf_blocks[b].ff.layers[0].bias
+                , params["blocks"][b]["mlp"]["c_fc"]["b"]
+            )
+            self._assign(
+                model.trf_blocks[b].ff.layers[2].weight
+                , params["blocks"][b]["mlp"]["c_proj"]["w"].T
+            )
+            self._assign(
+                model.trf_blocks[b].ff.layers[2].bias
+                , params["blocks"][b]["mlp"]["c_proj"]["b"]
+            )
 
-            model.trf_blocks[b].norm1.scale = self.__assign(
-                model.trf_blocks[b].norm1.scale,
-                params["blocks"][b]["ln_1"]["g"])
-            model.trf_blocks[b].norm1.shift = self.__assign(
-                model.trf_blocks[b].norm1.shift,
-                params["blocks"][b]["ln_1"]["b"])
-            model.trf_blocks[b].norm2.scale = self.__assign(
-                model.trf_blocks[b].norm2.scale,
-                params["blocks"][b]["ln_2"]["g"])
-            model.trf_blocks[b].norm2.shift = self.__assign(
-                model.trf_blocks[b].norm2.shift,
-                params["blocks"][b]["ln_2"]["b"])
 
-        model.final_norm.scale = self.__assign(model.final_norm.scale, params["g"])
-        model.final_norm.shift = self.__assign(model.final_norm.shift, params["b"])
-        model.out_head.weight = self.__assign(model.out_head.weight, params["wte"])
+            self._assign(
+                model.trf_blocks[b].norm1.scale
+                , params["blocks"][b]["ln_1"]["g"]
+            )
+            self._assign(
+                model.trf_blocks[b].norm1.shift
+                , params["blocks"][b]["ln_1"]["b"]
+            )
+            self._assign(
+                model.trf_blocks[b].norm2.scale
+                , params["blocks"][b]["ln_2"]["g"]
+            )
+            self._assign(
+                model.trf_blocks[b].norm2.shift
+                , params["blocks"][b]["ln_2"]["b"]
+            )
+
+        self._assign(model.final_norm.scale, params["g"])
+        self._assign(model.final_norm.shift, params["b"])
+        self._assign(model.out_head.weight, params["wte"])
+        
         model.to(dtype).to(self.BASE_CONFIG["device"])
         model.reset_optimizer()
 
-        print(f"loading gpt2 tf_ckpt finished.")
+        print(f"gpt2 tf_ckpt {ckpt_dir} loaded.")
 
         return model
 
@@ -185,14 +193,11 @@ class PretrainGPT2:
 
         return params
 
-    def __assign(self, left, right):
+    def _assign(self, left, right):
         if left.shape != right.shape:
             raise ValueError(f"Shape mismatch. Left: {left.shape}, Right: {right.shape}")
 
-        return torch.nn.Parameter(torch.tensor(right).to(left.device))
-
-
-
+        left.data.copy_(torch.tensor(right, dtype=left.dtype))
 
 
 

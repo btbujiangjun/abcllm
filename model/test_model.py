@@ -40,7 +40,7 @@ pretrain_gpt2 = PretrainGPT2()
 model = pretrain_gpt2.load_tf_ckpt(CHOOSE_MODEL, "./data/pretrain_gpt2")
 
 mw = ModelWrapper()
-print(mw.generate(model, "红烧肉怎么做", tokenizer, 50))
+print(mw.generate(model, "Who am I?", tokenizer, 50))
 
 trainer = Trainer(model, tokenizer)
 

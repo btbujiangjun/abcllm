@@ -59,7 +59,7 @@ class Trainer():
             ,eval_iter
             ,start_context
             ,sample_iter=10_000
-            ,dump_path=""
+            ,dump_path="./"
             ,dump_steps=10_000
             ,temperature=0.0
             ,top_k=None
@@ -119,7 +119,7 @@ class Trainer():
                     start_time = time.time()
 
                 # Save checkpoint
-                if self.global_step % dump_steps == 0:
+                if self.global_step > 0 and self.global_step % dump_steps == 0:
                     self.dump(f"{dump_path}/tmp_steps_{self.global_step}.ckpt")
 
                 # Generate sample text
