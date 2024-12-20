@@ -1,7 +1,13 @@
-# 
-# base module for LLM task
-# GPTDateset: input is max_length sub_sequence and target shift 1 based input sequence
-#
+"""
+File: dataset.py
+Description: This module provides classes and methods for creating datasets and data loaders 
+             for GPT-style language models. It includes support for text, file, and preprocessed 
+             data input, as well as labeled and instruction-based datasets.
+Author: Jiang Jun
+Date: 2024-12-19
+Dependencies: torch, pandas, numpy
+"""
+
 import os
 import json
 import warnings
@@ -13,16 +19,26 @@ from functools import partial
 from torch.utils.data import Dataset, DataLoader
 
 class GPTDataset(Dataset):
+    """
+    A dataset class for GPT-style models. It generates input and target sequences 
+    based on a sliding window approach over tokenized data.
+
+    Args:
+        token_ids (List[int]): Tokenized input data.
+        max_length (int): Maximum length of each sequence.
+        stride (int): Step size for the sliding window.
+    """
     def __init__(self
             ,token_ids
             ,max_length=256
-            ,stride=1):
+            ,stride=1
+            ,eos_id=0):
         if len(token_ids) < max_length - 1:
             raise ValueError(f"token size({len(token_ids)}) is less then max_length({max_length}).")
        
         self.max_length = max_length
         self.stride = stride
-
+        self.eos_id = eos_id
         self.token_ids = token_ids
         self.token_size = len(token_ids)
         self.len = int((len(token_ids) - max_length) / stride) + 1
@@ -34,7 +50,7 @@ class GPTDataset(Dataset):
             ,max_length=256
             ,stride=1):
         token_ids = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
-        return cls(token_ids, max_length, stride)
+        return cls(token_ids, max_length, stride, tokenizer.eos_id)
 
     @classmethod
     def from_files(cls
@@ -49,12 +65,8 @@ class GPTDataset(Dataset):
                 with open(file, "r", encoding=encoding) as f:
                     text.append(f.read())
             else:
-                warnings.warn(f"{file} is not exists and skip it.")
-        
-        text = "".join(text)
-        token_ids = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
-        
-        return cls(token_ids, max_length, stride)
+                warnings.warn(f"{file} does not existed. Skipping.")
+        return cls.from_text("".join(text), tokenizer, max_length, stride)
     
     @classmethod
     def from_preprocess_files(cls
@@ -88,18 +100,28 @@ class GPTDataset(Dataset):
         return self.len
 
     def __getitem__(self, idx):
-        if(idx >= len(self)):
-            raise IndexError(f"Index {idx} is Out Of Bounds for dataset of size {len(self)}.")
+        """
+        Retrieves the input and target sequence for the given index.
+
+        Args:
+            idx (int): Index of the sample.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Input and target sequences.
+        """
+        if idx >= len(self):
+            raise IndexError(f"Index {idx} is out of bounds for dataset of size {len(self)}.") 
         
         start_index = idx * self.stride
-        input_batch = torch.tensor(
-            self.token_ids[start_index: start_index + self.max_length]
-            , dtype=torch.int32
-        )
-        target_batch = torch.tensor(
-            self.token_ids[start_index + 1 : start_index + 1 + self.max_length]
-            , dtype=torch.int32
-        )
+        end_index = start_index + self.max_length + 1
+        
+        data_seq = np.asarray(self.token_ids[start_index : end_index], dtype=np.int32)
+        padding_length = max(0, self.max_length + 1 - len(data_seq))
+        if padding_length > 0:
+            data_seq = np.concatenate([data_seq, np.full(padding_length, self.eos_id)])
+
+        input_batch = torch.from_numpy(data_seq[: -1]).to(dtype=torch.int32)
+        target_batch = torch.from_numpy(data_seq[1:]).to(dtype=torch.int32)
         
         return input_batch, target_batch
 
@@ -113,10 +135,6 @@ class GPTDataLoader():
     def __init__(self, tokenizer, num_workers=0):
         self.tokenizer = tokenizer
         self.num_workers = num_workers
-
-    @property
-    def token_size()->int:
-        return self.total_token
 
     def _create(self
             ,dataset
@@ -140,6 +158,7 @@ class GPTDataLoader():
             ,stride=128
             ,shuffle=True
             ,drop_last=True):
+        print("text:", text)
         dataset = GPTDataset.from_text(text, self.tokenizer, max_length, stride)
         return self._create(
             dataset,
@@ -212,29 +231,13 @@ class GPTDataLoader():
             ,stride=128):
         assert train_ratio > 0.0 and train_ratio < 1.0, "train_ratio must be large than 0.0 and less then 1.0"
         split_idx = int(len(text) * train_ratio)
-        train_text = text[:split_idx]
-        val_text = text[split_idx:]
+        train_text, val_text = text[:split_idx], text[split_idx:]
 
-        train_dataset = GPTDataset.from_text(train_text, self.tokenizer, max_length, stride)
-        val_dataset = GPTDataset.from_text(val_text, self.tokenizer, max_length, stride)
-        
-        train_loader = self._create(
-            train_dataset
-            ,batch_size=batch_size
-            ,shuffle=True
-            ,drop_last=True
-            ,num_workers=self.num_workers
-        ) 
-
-        val_loader = self._create(
-            val_dataset
-            ,batch_size=batch_size
-            ,shuffle=False
-            ,drop_last=False
-            ,num_workers=self.num_workers
-        )
+        train_loader = self.text_dataloader(train_text, batch_size, max_length, stride, shuffle=True, drop_last=True)
+        val_loader = self.text_dataloader(val_text, batch_size, max_length, stride, shuffle=False, drop_last=False)
 
         return train_loader, val_loader
+
 
     def file_train_val_dataloader(self
             ,file
