@@ -52,7 +52,7 @@ if __name__ == "__main__":
                         help='Frequency of saving model checkpoints during training')
     parser.add_argument('--lr', type=float, default=5e-4,
                         help='Learning rate for the optimizer')
-    parser.add_argument('--batch_size', type=int, default=4,
+    parser.add_argument('--batch_size', type=int, default=8,
                         help='Batch size for training')
     parser.add_argument('--warmup', type=bool, default=True,
                         help='Warmup with the lastest checkpoint')

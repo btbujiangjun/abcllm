@@ -36,17 +36,19 @@ def main():
     sp_tokenizer = SPTokenizer("./data/ChatGLMTokenizer/tokenizer.model")
     preprocessed_dataset = GPTDataset.from_preprocess_files(
         [preprocessed_file_path],
-        max_length=256,
-        stride=256,
+        max_length=1024,
+        stride=1024,
         memmap=True,
     )
 
     print(f"Preprocessed dataset length: {len(preprocessed_dataset)}")
     for idx, (batch, target) in enumerate(preprocessed_dataset):
-        if idx >= 5:  # Limit output for brevity
+        if idx >= 500:  # Limit output for brevity
             break
         print(f"Train batch {idx}: {batch.tolist()} -> {sp_tokenizer.decode(batch.tolist())}")
         print(f"Target batch {idx}: {target.tolist()} -> {sp_tokenizer.decode(target.tolist())}")
+
+'''
 
     # Create train and validation dataloaders
     print("\nCreating train/validation dataloaders...")
@@ -120,7 +122,7 @@ def main():
     print("\nInstruction Dataset Example:")
     for entry in instruction_dataset.data[:5]:  # Limit output
         print(InstructionDataset.format_input(entry))
-
+'''
 
 # Entry point
 if __name__ == "__main__":
