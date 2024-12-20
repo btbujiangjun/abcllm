@@ -21,6 +21,8 @@ Author: JiangJun
 Date: 2024-12-16
 """
 
+
+
 import torch
 import torch.nn as nn
 from attention.attention import MultiHeadAttention
@@ -279,7 +281,7 @@ class ModelWrapper:
     def __generate(self
             ,model
             ,ids
-            ,max_generate_tokens
+            ,max_generate_tokens=None
             ,context_length=None
             ,temperature=0.0
             ,top_k=None
@@ -301,6 +303,8 @@ class ModelWrapper:
         """
         if context_length is None:
             context_length = model.cfg["context_length"]
+        if max_generate_tokens is None:
+            max_generate_tokens = context_length
         ids = ids.to(model.device)
 
         for _ in range(max_generate_tokens):
@@ -380,7 +384,5 @@ class ModelWrapper:
             ,eos_id=eos_id
         )
 
-        out_ids_flat = out_ids.squeeze(0)
-
-        return tokenizer.decode(out_ids_flat.tolist()).strip()
+        return tokenizer.decode(out_ids.squeeze(0).tolist()).strip()
 

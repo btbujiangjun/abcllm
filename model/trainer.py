@@ -112,10 +112,13 @@ class Trainer():
                     if (len(track_tokens_seen) > 0):
                         delta_token_seen = tokens_seen - track_tokens_seen[-1]
                     print(
-                        f"Epoch {epoch + 1} Step {self.global_step}, Tokens_seen:{tokens_seen} of {train_loader.token_size}, "
+                        f"Epoch {epoch + 1} Step {self.global_step}, "
+                        f"Tokens_seen:{tokens_seen} of {train_loader.token_size}, "
                         f"{delta_tokens_seen/1000/(time.time() - start_time):.2f}K tokens/sec, "
+                        f"Learn Rate {self.model.optimizer.param_groups[0]['lr']}, "
                         f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
                     )
+                    
                     start_time = time.time()
 
                 # Save checkpoint
