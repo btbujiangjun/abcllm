@@ -54,9 +54,12 @@ class SelfAttention(nn.Module):
         Returns:
             torch.Tensor: Output tensor after self-attention.
         """
-        queries = self.w_query(x)
-        keys = self.w_key(x)
-        values = self.w_value(x)
+        assert x.dim() == 3, "Input must be a 3D tensor"
+        batch_size, seq_length, d_in = x.shape
+
+        queries = self.w_query(x) # (batch_size, seq_length, d_out)
+        keys = self.w_key(x) # (batch_size, seq_length, d_out)
+        values = self.w_value(x) # (batch_size, seq_length, d_out)
 
         attn_scores = queries @ keys.T
 
