@@ -133,7 +133,7 @@ def for_server_conf(args, model_conf):
     args.print_sample_iter = 25
     args.eval_freq = 5
     args.save_ckpt_freq = 1000
-    args.batch_size = 5
+    args.batch_size = 4
     model_conf["context_length"] = 768
     model_conf["accumulation_steps"] = 40
 
