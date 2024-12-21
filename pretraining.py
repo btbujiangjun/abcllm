@@ -133,7 +133,7 @@ def for_server_conf(args, model_conf):
     args.print_sample_iter = 25
     args.eval_freq = 5
     args.save_ckpt_freq = 1000
-    args.batch_size = 4
+    args.batch_size = 5
     model_conf["context_length"] = 768
     model_conf["accumulation_steps"] = 40
 
@@ -148,11 +148,11 @@ if __name__ == "__main__":
                         help='Directory where the model checkpoints will be saved')
     parser.add_argument('--num_epochs', type=int, default=1,
                         help='Number of epochs to train the model')
-    parser.add_argument('--print_sample_iter', type=int, default=2,
+    parser.add_argument('--print_sample_iter', type=int, default=50,
                         help='Iterations between printing sample outputs')
-    parser.add_argument('--eval_freq', type=int, default=1,
+    parser.add_argument('--eval_freq', type=int, default=10,
                         help='Frequency of evaluations during training')
-    parser.add_argument('--save_ckpt_freq', type=int, default=2,
+    parser.add_argument('--save_ckpt_freq', type=int, default=500,
                         help='Frequency of saving model checkpoints during training')
     parser.add_argument('--lr', type=float, default=5e-4,
                         help='Learning rate for the optimizer')

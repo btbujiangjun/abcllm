@@ -31,7 +31,7 @@ from attention.attention import MultiHeadAttention
 # Default configuration for a GPTModel
 GPT_CONFIG_124M = {
     "vocab_size": 64789,  # Number of tokens in the vocabulary
-    "context_length": 256,  # Maximum sequence length
+    "context_length": 512,  # Maximum sequence length
     "emb_dim": 768,  # Embedding dimension
     "n_heads": 12,  # Number of attention heads
     "n_layers": 12,  # Number of transformer layers

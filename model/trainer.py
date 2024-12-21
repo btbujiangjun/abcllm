@@ -56,7 +56,7 @@ class Trainer():
             self.optimizer = model.module.optimizer
         else:
             self.cfg = model.cfg
-            self.optimizer = model.module.optimizer
+            self.optimizer = model.optimizer
 
     def train(self
             ,train_loader
