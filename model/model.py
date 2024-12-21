@@ -30,7 +30,7 @@ from attention.attention import MultiHeadAttention
 # Default configuration for a GPTModel
 GPT_CONFIG_124M = {
     "vocab_size": 64789,  # Number of tokens in the vocabulary
-    "context_length": 512,  # Maximum sequence length
+    "context_length": 256,  # Maximum sequence length
     "emb_dim": 768,  # Embedding dimension
     "n_heads": 12,  # Number of attention heads
     "n_layers": 12,  # Number of transformer layers
@@ -38,6 +38,7 @@ GPT_CONFIG_124M = {
     "qkv_bias": False,  # Whether to use bias in QKV projections
     "lr": 4e-5,  # Learning rate
     "decay": 0.1,  # Weight decay
+    "accumulation_steps": 4, # grad accumulation update steps
     "device": torch.device(
         "mps" if torch.backends.mps.is_available() else (
             "cuda" if torch.cuda.is_available() else "cpu")
