@@ -63,6 +63,7 @@ def train_worker(
             stride=GPT_CONFIG_124M["context_length"],
             memmap=True
         )
+        GPT_CONFIG_124M['device'] = torch.device(f"cuda:{rank}")
         sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=True)
         train_loader = ABCDataLoader(dataset, sampler=sampler, batch_size=args.batch_size, token_size=dataset.token_size)
     else:
@@ -73,6 +74,7 @@ def train_worker(
             max_length=GPT_CONFIG_124M["context_length"],
             stride=GPT_CONFIG_124M["context_length"]
         )
+    
     val_loader = dataloader.preprocess_file_dataloader(
         [args.train_data],
         batch_size=args.batch_size,
@@ -80,7 +82,6 @@ def train_worker(
         stride=GPT_CONFIG_124M["context_length"]
     )
 
-    GPT_CONFIG_124M['device'] = rank
     model = GPTModel(GPT_CONFIG_124M)
     trainer = Trainer(model, tokenizer)
 
@@ -141,7 +142,7 @@ if __name__ == "__main__":
                         help='Iterations between printing sample outputs')
     parser.add_argument('--eval_freq', type=int, default=1,
                         help='Frequency of evaluations during training')
-    parser.add_argument('--save_ckpt_freq', type=int, default=10,
+    parser.add_argument('--save_ckpt_freq', type=int, default=2,
                         help='Frequency of saving model checkpoints during training')
     parser.add_argument('--lr', type=float, default=5e-4,
                         help='Learning rate for the optimizer')
@@ -165,65 +166,8 @@ if __name__ == "__main__":
         world_size = torch.cuda.device_count()
         mp.spawn(train_worker, args=(world_size, args, True), nprocs=world_size, join=True)
     else:
-        print(GPT_CONFIG_124M['device'])
         train_worker(0, 1, args, False)
 
 
-'''
-    model = GPTModel(GPT_CONFIG_124M)
-    tokenizer = SPTokenizer("./data/ChatGLMTokenizer/tokenizer.model")
-    dataloader = GPTDataLoader(tokenizer, num_workers=0)
-    trainer = Trainer(model, tokenizer)
-    
-    if args.warmup:
-        ckpt_dir = args.output_dir
-        ckpts = [os.path.join(ckpt_dir, f) for f in os.listdir(ckpt_dir) if os.path.isfile(os.path.join(ckpt_dir, f))]
-        if len(ckpts) > 0:
-            lastest_ckpt = max(ckpts, key=os.path.getmtime)
-            trainer.load(lastest_ckpt)
-
-    train_loader = dataloader.preprocess_file_dataloader(
-        [args.train_data],
-        batch_size=args.batch_size,
-        shuffle=True,
-        max_length=GPT_CONFIG_124M["context_length"],
-        stride=GPT_CONFIG_124M["context_length"]
-    )
-    val_loader = dataloader.preprocess_file_dataloader(
-        [args.train_data],
-        batch_size=args.batch_size,
-        max_length=GPT_CONFIG_124M["context_length"],
-        stride=GPT_CONFIG_124M["context_length"]
-    )
-
-    start_context = "光合作用是怎么回事"
-    
-    try:
-        train_losses, val_losses, tokens_seen = trainer.train(
-            train_loader,
-            val_loader,
-            num_epochs=args.num_epochs,
-            eval_freq=args.eval_freq,
-            eval_iter=1,
-            start_context=start_context,
-            sample_iter=args.print_sample_iter,
-            dump_steps=args.save_ckpt_freq,
-            dump_path=output_dir,
-            temperature=args.temperature,
-            top_k=args.top_k
-        )
-    
-        epochs_tensor = torch.linspace(0, args.num_epochs, len(train_losses))
-        plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses, output_dir)
-
-        trainer.dump(output_dir / "model_pg_final.pth")
-    except KeyboardInterrupt:
-        file_name = output_dir / "model_final_interrupted.pth"
-        trainer.dump(file_name)
-        print(f"Saved {file_name}")
-
-    print(f"Maximum GPU memory allocated: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")
-
-'''
 
 
