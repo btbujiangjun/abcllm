@@ -94,9 +94,8 @@ def train_worker(
             lastest_ckpt = max(ckpts, key=os.path.getmtime)
             trainer.load(lastest_ckpt)
 
-    start_context = "宇宙起源"
-
     try:
+        start_context = "宇宙起源"
         train_losses, val_losses, tokens_seen = trainer.train(
             train_loader,
             val_loader,
@@ -112,26 +111,22 @@ def train_worker(
             rank=rank
         )
     
-        epochs_tensor = torch.linspace(0, args.num_epochs, len(train_losses))
-        plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses, output_dir)
         if is_main_processor:
             trainer.dump(output_dir / "model_pg_final.pth")
+    
+        epochs_tensor = torch.linspace(0, args.num_epochs, len(train_losses))
+        plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses, output_dir)
+
+        if is_distributed:
+            cleanup()
+
     except KeyboardInterrupt:
-        if is_main_processor:
-            file_name = output_dir / "model_final_interrupted.pth"
-            trainer.dump(file_name)
-            print(f"Saved {file_name}")
-
-    print(f"Maximum GPU memory allocated: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")
-
-    if is_distributed:
-        cleanup()
-
+        file_name = output_dir / "model_final_interrupted.pth"
+        trainer.dump(file_name)
+        print(f"Saved {file_name}")
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(description='GPT Model Training Configuration')
-
     parser.add_argument('--train_data', type=str, default='./data/pretrain_train_data.bin',
                         help='Directory containing the training data')
     parser.add_argument('--val_data', type=str, default='./data/pretrain_val_data.bin',
@@ -163,12 +158,11 @@ if __name__ == "__main__":
 
     if args.lr:
         GPT_CONFIG_124M["lr"] = args.lr
-    
+
     if torch.cuda.is_available():
         world_size = torch.cuda.device_count()
         mp.spawn(train_worker, args=(world_size, args, True), nprocs=world_size, join=True)
     else:
         train_worker(0, 1, args, False)
 
-
-
+    print(f"Maximum GPU memory allocated: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")

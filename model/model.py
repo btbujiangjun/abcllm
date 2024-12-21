@@ -25,6 +25,7 @@ Date: 2024-12-16
 
 import torch
 import torch.nn as nn
+from torch.nn.parallel import DistributedDataParallel as DDP
 from attention.attention import MultiHeadAttention
 
 # Default configuration for a GPTModel
@@ -52,8 +53,9 @@ class GPTModel(nn.Module):
     """
     def __init__(self, cfg):
         super().__init__()
+        self._cfg = None
         self.cfg = cfg
-        device=cfg["device"]
+        device = cfg["device"]
 
         # Embedding layers
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"]).to(device)
@@ -81,6 +83,17 @@ class GPTModel(nn.Module):
         )
 
         print(f"Initialized model with configuration:{cfg}")
+    
+    @property
+    def cfg(self):
+        if isinstance(self, DDP):
+            return self.module._cfg
+        else:
+            return self._cfg
+    
+    @cfg.setter
+    def cfg(self, value):
+        self._cfg = value
 
     def reset_optimizer(self):
         """Reset the optimizer with the current configuration."""
