@@ -24,6 +24,7 @@ Date: 2024-12-16
 import time
 import torch
 import torch.nn as nn
+from torch.nn.parallel import DistributedDataParallel as DDP
 from model.model import GPTModel, GPT_CONFIG_124M, ModelWrapper
 
 class Trainer():
@@ -50,6 +51,12 @@ class Trainer():
         self.wrapper = ModelWrapper()
         self.num_epochs = 0
         self.global_step = 0
+        if isinstance(model, DDP):
+            self.cfg = model.module.cfg
+            self.optimizer = model.module.optimizer
+        else:
+            self.cfg = model.cfg
+            self.optimizer = model.module.optimizer
 
     def train(self
             ,train_loader
@@ -89,12 +96,12 @@ class Trainer():
         """
         train_losses, val_losses, track_tokens_seen = [], [], []
         tokens_seen, self.global_step = 0, -1
-        accumulation_steps = self.model.cfg["accumulation_steps"]
+        accumulation_steps = self.cfg["accumulation_steps"]
         start_time = time.time()
         
         for epoch in range(num_epochs):
             self.model.train()
-            self.model.optimizer.zero_grad()
+            self.optimizer.zero_grad()
             for i, (input_batch, target_batch) in enumerate(train_loader):
                 loss = self._compute_loss(input_batch, target_batch)
                 loss = loss / accumulation_steps #Scale loss for gradient accumulation
@@ -103,8 +110,8 @@ class Trainer():
                 
                 #Update parameters after accumulating gradients
                 if (i + 1) % accumulation_steps == 0 or (i + 1) == len(train_loader):
-                    self.model.optimizer.step()
-                    self.model.optimizer.zero_grad()
+                    self.optimizer.step()
+                    self.optimizer.zero_grad()
                     self.global_step += 1
 
                     # Evaluate and log progress
@@ -118,7 +125,7 @@ class Trainer():
                             f"Rank {rank} Epoch {epoch + 1} Step {self.global_step}, "
                             f"Tokens seen:{tokens_seen} of {train_loader.token_size}, "
                             f"Speed:{delta_tokens_seen/1000/(time.time() - start_time):.2f}K tokens/sec, "
-                            f"LR: {self.model.optimizer.param_groups[0]['lr']:.8f}, "
+                            f"LR: {self.optimizer.param_groups[0]['lr']:.8f}, "
                             f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
                         )
                         start_time = time.time() #refresh timer
@@ -149,7 +156,7 @@ class Trainer():
             self.model, 
             start_context, 
             self.tokenizer, 
-            self.model.cfg["context_length"],
+            self.cfg["context_length"],
             temperature=temperature,
             top_k=top_k,
             eos_id=eos_id
@@ -221,11 +228,11 @@ class Trainer():
             ckpt (str): Path to save the checkpoint.
         """
         torch.save({
-            "model_cfg": self.model.cfg
+            "model_cfg": self.cfg
             ,"num_epochs": self.num_epochs
             ,"global_step": self.global_step
             ,"model_state_dict": self.model.state_dict()
-            ,"optimizer_state_dict": self.model.optimizer.state_dict()
+            ,"optimizer_state_dict": self.optimizer.state_dict()
             }, ckpt
         )
         print(f"dump ckpt {ckpt} successfully.")
@@ -239,7 +246,7 @@ class Trainer():
             dtype (torch.dtype, optional): Data type to convert model parameters to.
         """
         checkpoint = torch.load(ckpt, weights_only=False, map_location="cpu")
-        if self.model.cfg != checkpoint["model_cfg"]:       
+        if self.cfg != checkpoint["model_cfg"]:       
             self.model = GPTModel(checkpoint["model_cfg"])
         
         self.num_epochs = checkpoint["num_epochs"] 
@@ -256,5 +263,5 @@ class Trainer():
         if dtype is not None:
             self.model.to(dtype)
 
-        self.model.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         print(f"Checkpoint {ckpt} loaded with {self.num_epochs} epochs and step {self.global_step}.")

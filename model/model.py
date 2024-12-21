@@ -90,10 +90,13 @@ class GPTModel(nn.Module):
             return self.module._cfg
         else:
             return self._cfg
-    
+ 
     @cfg.setter
     def cfg(self, value):
-        self._cfg = value
+        if isinstance(self, DDP):
+            self.module._cfg = value
+        else:
+            self._cfg = value
 
     def reset_optimizer(self):
         """Reset the optimizer with the current configuration."""
@@ -315,7 +318,11 @@ class ModelWrapper:
         Returns:
             torch.Tensor: Generated token IDs of shape (1, seq_len + max_generate_tokens).
         """
-        context_length = context_length or model.cfg["context_length"]
+        if isinstance(model, DDP):
+            cfg = model.module.cfg
+        else:
+            cfg = model.cfg
+        context_length = context_length or cfg["context_length"]
         max_generate_tokens = max_generate_tokens or context_length
         ids = ids.to(model.device)
 

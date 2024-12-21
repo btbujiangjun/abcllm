@@ -48,6 +48,7 @@ def train_worker(
         rank,
         world_size,
         args,
+        model_cfg,
         is_distributed=False,
     ):
     is_main_processor = True
@@ -59,11 +60,11 @@ def train_worker(
         setup(rank, world_size)
         dataset = GPTDataset.from_preprocess_files(
             [args.train_data],
-            max_length=GPT_CONFIG_124M["context_length"],
-            stride=GPT_CONFIG_124M["context_length"],
+            max_length=model_cfg["context_length"],
+            stride=model_cfg["context_length"],
             memmap=True
         )
-        GPT_CONFIG_124M['device'] = torch.device(f"cuda:{rank}")
+        model_cfg['device'] = torch.device(f"cuda:{rank}")
         sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=True)
         train_loader = ABCDataLoader(dataset, sampler=sampler, batch_size=args.batch_size, token_size=dataset.token_size)
     else:
@@ -71,18 +72,18 @@ def train_worker(
             [args.train_data],
             batch_size=args.batch_size,
             shuffle=True,
-            max_length=GPT_CONFIG_124M["context_length"],
-            stride=GPT_CONFIG_124M["context_length"]
+            max_length=model_cfg["context_length"],
+            stride=model_cfg["context_length"]
         )
     
     val_loader = dataloader.preprocess_file_dataloader(
         [args.train_data],
         batch_size=args.batch_size,
-        max_length=GPT_CONFIG_124M["context_length"],
-        stride=GPT_CONFIG_124M["context_length"]
+        max_length=model_cfg["context_length"],
+        stride=model_cfg["context_length"]
     )
 
-    model = GPTModel(GPT_CONFIG_124M)
+    model = GPTModel(model_cfg)
     if is_distributed:
         model = DDP(model, device_ids=[rank])
     trainer = Trainer(model, tokenizer)
@@ -132,7 +133,7 @@ def for_server_conf(args, model_conf):
     args.print_sample_iter = 25
     args.eval_freq = 5
     args.save_ckpt_freq = 1000
-    args.batch_size = 5
+    args.batch_size = 4
     model_conf["context_length"] = 768
     model_conf["accumulation_steps"] = 40
 
@@ -165,17 +166,18 @@ if __name__ == "__main__":
                         help='restrict the sampled tokens to the top-k most likely tokens')
 
     args = parser.parse_args()
+    model_cfg = GPT_CONFIG_124M
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.lr:
-        GPT_CONFIG_124M["lr"] = args.lr
+        model_cfg["lr"] = args.lr
 
     if torch.cuda.is_available():
         world_size = torch.cuda.device_count()
-        for_server_conf(args, GPT_CONFIG_124M)
-        mp.spawn(train_worker, args=(world_size, args, True), nprocs=world_size, join=True)
+        for_server_conf(args, model_cfg)
+        mp.spawn(train_worker, args=(world_size, args, model_cfg, True), nprocs=world_size, join=True)
     else:
-        train_worker(0, 1, args, False)
+        train_worker(0, 1, args, model_cfg, False)
 
     print(f"Maximum GPU memory allocated: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")
