@@ -279,7 +279,7 @@ class ModelWrapper:
     def __init__(self):
         pass
 
-    def __generate(self
+    def _generate(self
             ,model
             ,ids
             ,max_generate_tokens=None
@@ -302,10 +302,8 @@ class ModelWrapper:
         Returns:
             torch.Tensor: Generated token IDs of shape (1, seq_len + max_generate_tokens).
         """
-        if context_length is None:
-            context_length = model.cfg["context_length"]
-        if max_generate_tokens is None:
-            max_generate_tokens = context_length
+        context_length = context_length or model.cfg["context_length"]
+        max_generate_tokens = max_generate_tokens or context_length
         ids = ids.to(model.device)
 
         for _ in range(max_generate_tokens):
@@ -328,15 +326,14 @@ class ModelWrapper:
 
             # Apply temperature scaling and sample from probabilities
             if temperature > 0.0:
-                logits = logits / temperature
-                probs = torch.softmax(logits, dim=-1)
+                probs = torch.softmax(logits / temperature, dim=-1)
                 ids_next = torch.multinomial(probs, num_samples=1)
             else:
                 # Deterministic greedy decoding
                 ids_next = torch.argmax(logits, dim=-1, keepdim=True)
 
             # Stop generation if the end-of-sequence token is generated
-            if eos_id is not None and (ids_next == eos_id).item():
+            if eos_id is not None and ids_next.item() == eos_id:
                 break
 
             # Append the generated token to the sequence
@@ -375,7 +372,7 @@ class ModelWrapper:
         if eos_id is None:
             eos_id = tokenizer.eos_id
 
-        out_ids = self.__generate(
+        out_ids = self._generate(
             model
             ,encode_tensor
             ,max_generate_tokens

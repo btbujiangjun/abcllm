@@ -64,6 +64,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.lr:
+        GPT_CONFIG_124M["lr"] = args.lr
     
     model = GPTModel(GPT_CONFIG_124M)
     tokenizer = SPTokenizer("./data/ChatGLMTokenizer/tokenizer.model")

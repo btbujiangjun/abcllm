@@ -22,6 +22,7 @@ class PretrainGPT2:
             "qkv_bias": True,
             "lr": 5e-5,
             "decay": 0.1,
+            "accumulation_steps": 4, # grad accumulation update steps
             "device": torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
         }
         self.MODEL_CONFIG ={
