@@ -95,11 +95,12 @@ class Trainer():
             self.model.train()
             self.model.optimizer.zero_grad()
             for i, (input_batch, target_batch) in enumerate(train_loader):
-                loss = self.__batch_loss(input_batch, target_batch)
-                loss = loss / accumulation_steps
+                loss = self._compute_loss(input_batch, target_batch)
+                loss = loss / accumulation_steps #Scale loss for gradient accumulation
                 loss.backward()
                 tokens_seen += input_batch.numel()
                 
+                #Update parameters after accumulating gradients
                 if (i + 1) % accumulation_steps == 0 or (i + 1) == len(train_loader):
                     self.model.optimizer.step()
                     self.model.optimizer.zero_grad()
@@ -112,32 +113,39 @@ class Trainer():
                         val_losses.append(val_loss)
                         track_tokens_seen.append(tokens_seen)
 
-                        delta_tokens_seen = tokens_seen
-                        if (len(track_tokens_seen) > 0):
-                            delta_tokens_seen -= track_tokens_seen[-1]
+                        delta_tokens_seen = tokens_seen - (track_tokens_seen[-2] if len(track_tokens_seen) > 1 else 0)
                         print(
                             f"Epoch {epoch + 1} Step {self.global_step}, "
-                            f"Tokens_seen:{tokens_seen} of {train_loader.token_size}, "
-                            f"{delta_tokens_seen/1000/(time.time() - start_time):.2f}K tokens/sec, "
-                            f"Learn Rate {self.model.optimizer.param_groups[0]['lr']}, "
+                            f"Tokens seen:{tokens_seen} of {train_loader.token_size}, "
+                            f"Speed:{delta_tokens_seen/1000/(time.time() - start_time):.2f}K tokens/sec, "
+                            f"LR: {self.model.optimizer.param_groups[0]['lr']:.8f}, "
                             f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
                         )
                         start_time = time.time() #refresh timer
 
-                    # Save checkpoint
+                    # Save checkpoint periodically
                     if self.global_step > 0 and self.global_step % dump_steps == 0:
                         self.dump(f"{dump_path}/tmp_steps_{self.global_step}.ckpt")
                         
-                    # Generate sample text
+                    # Generate sample text periodically
                     if self.global_step % sample_iter == 0:
-                        self._generate(start_context, temperature, top_k, eos_id)
+                        self._generate_sample(start_context, temperature, top_k, eos_id)
        
             self.num_epochs += 1
         
         return train_losses, val_losses, track_tokens_seen
 
-    def _generate(self, start_context, temperature, top_k, eos_id):
-        generate_text = self.wrapper.generate(
+    def _generate_sample(self, start_context, temperature, top_k, eos_id):
+        """
+        Generate sample text from the model.
+
+        Args:
+            context (str): Starting context for generation.
+            temperature (float): Sampling temperature.
+            top_k (int): Top-k sampling.
+            eos_id (int): End-of-sequence token ID.
+        """
+        generate_sample = self.wrapper.generate(
             self.model, 
             start_context, 
             self.tokenizer, 
@@ -146,10 +154,10 @@ class Trainer():
             top_k=top_k,
             eos_id=eos_id
         )
-        print(f"Generated text:{generate_text}")
+        print(f"Generated sample:{generate_sample}")
        
 
-    def __batch_loss(self, input_batch, target_batch):
+    def _compute_loss(self, input_batch, target_batch):
         """
         Compute the loss for a single batch.
 
@@ -167,7 +175,7 @@ class Trainer():
         loss = nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten().long())
         return loss
 
-    def __loader_loss(self, data_loader, num_batches=None):
+    def _loader_loss(self, data_loader, num_batches=None):
         """
         Calculate the average loss over a DataLoader.
 
@@ -177,20 +185,13 @@ class Trainer():
 
         Returns:
             float: Average loss.
-        """
-        if len(data_loader) == 0:
-            return float("nan")
-        if num_batches == None:
-            num_batches = len(data_loader)
-        else:
-            num_batches = min(len(data_loader), num_batches)
-    
+        """    
         total_loss = 0
+        num_batches = num_batches or len(data_loader)
         for i, (input_batch, target_batch) in enumerate(data_loader):
             if i >= num_batches:
                 break
-            total_loss += self.__batch_loss(input_batch, target_batch).item()
-
+            total_loss += self._compute_loss(input_batch, target_batch).item()
         return total_loss / num_batches
 
     def evaluate(self, train_loader, val_loader, eval_iter):
@@ -207,8 +208,8 @@ class Trainer():
         """
         self.model.eval()
         with torch.no_grad():
-            train_loss = self.__loader_loss(train_loader, num_batches=eval_iter)
-            val_loss = self.__loader_loss(val_loader, num_batches=eval_iter)
+            train_loss = self._loader_loss(train_loader, num_batches=eval_iter)
+            val_loss = self._loader_loss(val_loader, num_batches=eval_iter)
         self.model.train()
         return train_loss, val_loss
 
