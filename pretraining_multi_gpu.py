@@ -83,6 +83,8 @@ def train_worker(
     )
 
     model = GPTModel(GPT_CONFIG_124M)
+    if is_distributed:
+        model = DDP(model, device_ids=[rank])
     trainer = Trainer(model, tokenizer)
 
     if args.warmup:
@@ -167,7 +169,6 @@ if __name__ == "__main__":
         mp.spawn(train_worker, args=(world_size, args, True), nprocs=world_size, join=True)
     else:
         train_worker(0, 1, args, False)
-
 
 
 
