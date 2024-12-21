@@ -128,7 +128,7 @@ class Trainer():
                         self.dump(f"{dump_path}/tmp_steps_{self.global_step}.ckpt")
                         
                     # Generate sample text periodically
-                    if self.global_step % sample_iter == 0:
+                    if rank == 0 and self.global_step % sample_iter == 0:
                         self._generate_sample(start_context, temperature, top_k, eos_id)
        
             self.num_epochs += 1
