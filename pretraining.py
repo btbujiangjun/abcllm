@@ -105,7 +105,7 @@ def train_worker(
             start_context=start_context,
             sample_iter=args.print_sample_iter,
             dump_steps=args.save_ckpt_freq,
-            dump_path=output_dir,
+            dump_path=args.output_dir,
             temperature=args.temperature,
             top_k=args.top_k,
             rank=rank
