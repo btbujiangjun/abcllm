@@ -158,7 +158,6 @@ class GPTDataLoader():
             ,stride=128
             ,shuffle=True
             ,drop_last=True):
-        print("text:", text)
         dataset = GPTDataset.from_text(text, self.tokenizer, max_length, stride)
         return self._create(
             dataset,

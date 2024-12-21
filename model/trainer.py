@@ -63,7 +63,8 @@ class Trainer():
             ,dump_steps=10_000
             ,temperature=0.0
             ,top_k=None
-            ,eos_id=None):
+            ,eos_id=None
+            ,rank=0):
         """
         Train the model and periodically evaluate and save checkpoints.
 
@@ -114,7 +115,7 @@ class Trainer():
                         track_tokens_seen.append(tokens_seen)
                         delta_tokens_seen = tokens_seen - (track_tokens_seen[-2] if len(track_tokens_seen) > 1 else 0)
                         print(
-                            f"Epoch {epoch + 1} Step {self.global_step}, "
+                            f"Rank {rank} Epoch {epoch + 1} Step {self.global_step}, "
                             f"Tokens seen:{tokens_seen} of {train_loader.token_size}, "
                             f"Speed:{delta_tokens_seen/1000/(time.time() - start_time):.2f}K tokens/sec, "
                             f"LR: {self.model.optimizer.param_groups[0]['lr']:.8f}, "
@@ -123,7 +124,7 @@ class Trainer():
                         start_time = time.time() #refresh timer
 
                     # Save checkpoint periodically
-                    if self.global_step > 0 and self.global_step % dump_steps == 0:
+                    if rank == 0 and self.global_step > 0 and self.global_step % dump_steps == 0:
                         self.dump(f"{dump_path}/tmp_steps_{self.global_step}.ckpt")
                         
                     # Generate sample text periodically
