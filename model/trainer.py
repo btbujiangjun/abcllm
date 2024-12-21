@@ -112,7 +112,6 @@ class Trainer():
                         train_losses.append(train_loss)
                         val_losses.append(val_loss)
                         track_tokens_seen.append(tokens_seen)
-
                         delta_tokens_seen = tokens_seen - (track_tokens_seen[-2] if len(track_tokens_seen) > 1 else 0)
                         print(
                             f"Epoch {epoch + 1} Step {self.global_step}, "
