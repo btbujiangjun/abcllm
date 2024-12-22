@@ -17,11 +17,12 @@ from dataset.dataset import GPTDataset, ABCDataLoader, GPTDataLoader
 from model.model import GPT_CONFIG_124M, GPTModel, ModelWrapper
 from model.trainer import Trainer
 
-def plot_losses(epochs_seen, tokens_seen, train_losses, val_losses, output_dir):
+def plot_losses(epochs_seen, tokens_seen, train_losses, local_losses, val_losses, output_dir):
     fig, ax1 = plt.subplots()
 
     # Plot training and validation loss against epochs
     ax1.plot(epochs_seen, train_losses, label="Training loss")
+    ax1.plot(epochs_seen, local_losses, label="Local loss")
     ax1.plot(epochs_seen, val_losses, linestyle="-.", label="Validation loss")
     ax1.set_xlabel("Epochs")
     ax1.set_ylabel("Loss")
@@ -97,7 +98,7 @@ def train_worker(
 
     try:
         start_context = "宇宙起源"
-        train_losses, val_losses, tokens_seen = trainer.train(
+        train_losses, local_losses, val_losses, tokens_seen = trainer.train(
             train_loader,
             val_loader,
             num_epochs=args.num_epochs,
@@ -116,7 +117,13 @@ def train_worker(
             trainer.dump(output_dir / "model_pg_final.pth")
     
         epochs_tensor = torch.linspace(0, args.num_epochs, len(train_losses))
-        plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses, output_dir)
+        plot_losses(
+            epochs_tensor, 
+            tokens_seen, 
+            train_losses, 
+            local_losses,
+            val_losses, 
+            output_dir)
 
         if is_distributed:
             cleanup()

@@ -90,22 +90,26 @@ class Trainer():
             eos_id (int): End-of-sequence token ID.
 
         Returns:
-            train_losses (list): List of training losses.
+            train_losses (list): List of total training losses.
+            local_losses (list): List of local training losses.
             val_losses (list): List of validation losses.
             track_tokens_seen (list): List of tokens seen at each evaluation step.
         """
-        train_losses, val_losses, track_tokens_seen = [], [], []
-        tokens_seen, self.global_step = 0, -1
         accumulation_steps = self.cfg["accumulation_steps"]
+        train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
+        train_loss, local_total_loss = 0, 0
+        tokens_seen, self.global_step, local_step = 0, -1, 0
         start_time = time.time()
-        
+
         for epoch in range(num_epochs):
             self.model.train()
             self.optimizer.zero_grad()
             for i, (input_batch, target_batch) in enumerate(train_loader):
-                loss = self._compute_loss(input_batch, target_batch)
-                loss = loss / accumulation_steps #Scale loss for gradient accumulation
+                #Scale loss for gradient accumulation
+                loss = self._compute_loss(input_batch, target_batch) / accumulation_steps
                 loss.backward()
+                
+                local_total_loss += loss.item()
                 tokens_seen += input_batch.numel()
                 
                 #Update parameters after accumulating gradients
@@ -113,21 +117,29 @@ class Trainer():
                     self.optimizer.step()
                     self.optimizer.zero_grad()
                     self.global_step += 1
+                    local_step += 1
 
                     # Evaluate and log progress
                     if self.global_step % eval_freq == 0:
-                        train_loss, val_loss = self.evaluate(train_loader, val_loader, eval_iter)
+                        val_loss = self.evaluate(val_loader, eval_iter)
+                        
+                        local_loss = local_total_loss / local_step
+                        train_loss += (local_loss - train_loss) / (self.global_step + 1) 
+                        delta_tokens = tokens_seen - (track_tokens_seen[-1] if track_tokens_seen else 0)
+                        speed = delta_tokens / 1000 / (time.time() - start_time)
+                        print(
+                            f"Rank:{rank} Epoch:{epoch + 1} Step:{self.global_step}, "
+                            f"Tokens seen:{tokens_seen}/{train_loader.token_size}, "
+                            f"Speed:{speed:.2f}K tokens/sec, LR:{self.optimizer.param_groups[0]['lr']:.8f}, "
+                            f"Loss(Total/Local/Val):{train_loss :.3f}/{local_loss :.3f}/{val_loss:.3f}"
+                        )
+
                         train_losses.append(train_loss)
+                        local_losses.append(local_loss)
                         val_losses.append(val_loss)
                         track_tokens_seen.append(tokens_seen)
-                        delta_tokens_seen = tokens_seen - (track_tokens_seen[-2] if len(track_tokens_seen) > 1 else 0)
-                        print(
-                            f"Rank {rank} Epoch {epoch + 1} Step {self.global_step}, "
-                            f"Tokens seen:{tokens_seen} of {train_loader.token_size}, "
-                            f"Speed:{delta_tokens_seen/1000/(time.time() - start_time):.2f}K tokens/sec, "
-                            f"LR: {self.optimizer.param_groups[0]['lr']:.8f}, "
-                            f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
-                        )
+
+                        local_total_loss, local_step = 0, 0 #refresh local matrix
                         start_time = time.time() #refresh timer
 
                     # Save checkpoint periodically
@@ -135,12 +147,12 @@ class Trainer():
                         self.dump(f"{dump_path}/tmp_steps_{self.global_step}.ckpt")
                         
                     # Generate sample text periodically
-                    if rank == 0 and  self.global_step % sample_iter == 0:
+                    if self.global_step % sample_iter == 0:
                         self._generate_sample(start_context, temperature, top_k, eos_id)
        
             self.num_epochs += 1
         
-        return train_losses, val_losses, track_tokens_seen
+        return train_losses, local_losses, val_losses, track_tokens_seen
 
     def _generate_sample(self, start_context, temperature, top_k, eos_id):
         """
@@ -179,8 +191,7 @@ class Trainer():
         target_batch = target_batch.to(self.model.device)
 
         logits = self.model(input_batch)
-        loss = nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten().long())
-        return loss
+        return nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten().long())
 
     def _loader_loss(self, data_loader, num_batches=None):
         """
@@ -201,12 +212,11 @@ class Trainer():
             total_loss += self._compute_loss(input_batch, target_batch).item()
         return total_loss / num_batches
 
-    def evaluate(self, train_loader, val_loader, eval_iter):
+    def evaluate(self, val_loader, eval_iter):
         """
         Evaluate the model on training and validation data.
 
         Args:
-            train_loader: DataLoader for training data.
             val_loader: DataLoader for validation data.
             eval_iter (int): Number of batches to evaluate.
 
@@ -215,10 +225,9 @@ class Trainer():
         """
         self.model.eval()
         with torch.no_grad():
-            train_loss = self._loader_loss(train_loader, num_batches=eval_iter)
             val_loss = self._loader_loss(val_loader, num_batches=eval_iter)
         self.model.train()
-        return train_loss, val_loss
+        return val_loss
 
     def dump(self, ckpt:str):
         """
