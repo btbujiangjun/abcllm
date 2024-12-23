@@ -38,7 +38,7 @@ GPT_CONFIG_124M = {
     "drop_rate": 0.1,  # Dropout rate
     "qkv_bias": False,  # Whether to use bias in QKV projections
     "lr": 4e-5,  # Learning rate
-    "decay": 0.1,  # Weight decay
+    "decay": 0.01,  # Weight decay
     "accumulation_steps": 4, # grad accumulation update steps
     "device": torch.device(
         "mps" if torch.backends.mps.is_available() else (

@@ -51,13 +51,21 @@ class Trainer():
         self.wrapper = ModelWrapper()
         self.num_epochs = 0
         self.global_step = 0
-        if isinstance(model, DDP):
-            self.cfg = model.module.cfg
-            self.optimizer = model.module.optimizer
-        else:
-            self.cfg = model.cfg
-            self.optimizer = model.optimizer
 
+    @property
+    def cfg(self):
+        if isinstance(self.model, DDP):
+            return self.model.module.cfg
+        else:
+            return self.model.cfg
+    
+    @property
+    def optimizer(self):
+        if isinstance(self.model, DDP):
+            return self.model.module.optimizer
+        else:
+            return self.model.optimizer
+    
     def train(self
             ,train_loader
             ,val_loader
@@ -128,10 +136,9 @@ class Trainer():
                         delta_tokens = tokens_seen - (track_tokens_seen[-1] if track_tokens_seen else 0)
                         speed = delta_tokens / 1000 / (time.time() - start_time)
                         print(
-                            f"Rank:{rank} Epoch:{epoch + 1} Step:{self.global_step}, "
-                            f"Tokens seen:{tokens_seen}/{train_loader.token_size}, "
-                            f"Speed:{speed:.2f}K tokens/sec, LR:{self.optimizer.param_groups[0]['lr']:.8f}, "
-                            f"Loss(Total/Local/Val):{train_loss :.3f}/{local_loss :.3f}/{val_loss:.3f}"
+                            f"Rank:{rank} Epoch:{epoch + 1} Step:{self.global_step} "
+                            f"Tokens seen:{tokens_seen}/{train_loader.token_size}, Speed:{speed:.2f}K tokens/sec, "
+                            f"Loss(Total/Local/Val): {train_loss:.3f}/{local_loss:.3f}/{val_loss:.3f}"
                         )
 
                         train_losses.append(train_loss)
@@ -145,7 +152,6 @@ class Trainer():
                     # Save checkpoint periodically
                     if rank == 0 and self.global_step > 0 and self.global_step % dump_steps == 0:
                         self.dump(f"{dump_path}/tmp_steps_{self.global_step}.ckpt")
-                        
                     # Generate sample text periodically
                     if self.global_step % sample_iter == 0:
                         self._generate_sample(start_context, temperature, top_k, eos_id)
@@ -173,7 +179,7 @@ class Trainer():
             top_k=top_k,
             eos_id=eos_id
         )
-        print(f"Generated sample:{generate_sample}")
+        print(f"Generated sample:\n{generate_sample}")
        
 
     def _compute_loss(self, input_batch, target_batch):
@@ -256,8 +262,8 @@ class Trainer():
         """
         checkpoint = torch.load(ckpt, weights_only=False, map_location="cpu")
         if self.cfg != checkpoint["model_cfg"]:       
-            self.model = GPTModel(checkpoint["model_cfg"])
-        
+            self.model = GPTModel(checkpoint["model_cfg"]) #reinitailize model
+
         self.num_epochs = checkpoint["num_epochs"] 
         self.global_step = checkpoint["global_step"]
 
@@ -273,4 +279,4 @@ class Trainer():
             self.model.to(dtype)
 
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        print(f"Checkpoint {ckpt} loaded with {self.num_epochs} epochs and step {self.global_step}.")
+        print(f"Loaded checkpoint {ckpt} with {self.num_epochs} epochs and step {self.global_step}.")

@@ -127,7 +127,6 @@ def train_worker(
 
         if is_distributed:
             cleanup()
-
     except KeyboardInterrupt:
         file_name = output_dir / "model_final_interrupted.pth"
         trainer.dump(file_name)
