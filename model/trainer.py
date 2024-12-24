@@ -147,8 +147,8 @@ class Trainer():
                 #Update parameters after accumulating gradients
                 if (i + 1) % accumulation_steps == 0 or (i + 1) == len(train_loader):
                     clip_grad_norm_(self.model.parameters(), max_norm=max_grad_norm)
-                    self.optimizer.step()
-                    schedular.step()
+                    self.optimizer.step() #Update parameter
+                    schedular.step() #Update learning rate
                     self.optimizer.zero_grad()
                     self.global_step += 1
                     local_step += 1
