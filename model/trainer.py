@@ -24,8 +24,25 @@ Date: 2024-12-16
 import time
 import torch
 import torch.nn as nn
+from torch.nn.utils import clip_grad_norm_
 from torch.nn.parallel import DistributedDataParallel as DDP
 from model.model import GPTModel, GPT_CONFIG_124M, ModelWrapper
+
+class LinearWarmupLinearDecayScheduler(torch.optim.lr_scheduler._LRScheduler):
+    def __init__(self, optimizer, warmup_steps, total_steps, last_epoch=-1):
+        self.warmup_steps = warmup_steps
+        self.total_steps = total_steps
+        super().__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        step = self.last_epoch
+        if step < self.warmup_steps:
+            return [base_lr * (step / self.warmup_steps) for base_lr in self.base_lrs]
+        else:
+            return [
+                base_lr * max(0.0, (1 - (step - self.warmup_steps) / (self.total_steps - self.warmup_steps)))
+                for base_lr in self.base_lrs
+            ]
 
 class Trainer():
     """
@@ -104,10 +121,17 @@ class Trainer():
             track_tokens_seen (list): List of tokens seen at each evaluation step.
         """
         accumulation_steps = self.cfg["accumulation_steps"]
+        max_grad_norm = self.cfg["max_grad_norm"]
         train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
         train_loss, local_total_loss = 0, 0
         tokens_seen, self.global_step, local_step = 0, -1, 0
         start_time = time.time()
+
+        schedular = LinearWarmupLinearDecayScheduler(
+            self.optimizer, 
+            self.cfg["warmup_steps"], 
+            len(train_loader)
+        )
 
         for epoch in range(num_epochs):
             self.model.train()
@@ -122,7 +146,9 @@ class Trainer():
                 
                 #Update parameters after accumulating gradients
                 if (i + 1) % accumulation_steps == 0 or (i + 1) == len(train_loader):
+                    clip_grad_norm_(self.model.parameters(), max_norm=max_grad_norm)
                     self.optimizer.step()
+                    schedular.step()
                     self.optimizer.zero_grad()
                     self.global_step += 1
                     local_step += 1
@@ -138,6 +164,7 @@ class Trainer():
                         print(
                             f"Rank:{rank} Epoch:{epoch + 1} Step:{self.global_step} "
                             f"Tokens seen:{tokens_seen}/{train_loader.token_size}, Speed:{speed:.2f}K tokens/sec, "
+                            f"LR: {self.optimizer.param_groups[0]['lr']:.8f}, "
                             f"Loss(Total/Local/Val): {train_loss:.3f}/{local_loss:.3f}/{val_loss:.3f}"
                         )
 
@@ -250,7 +277,7 @@ class Trainer():
             ,"optimizer_state_dict": self.optimizer.state_dict()
             }, ckpt
         )
-        print(f"dump ckpt {ckpt} successfully.")
+        print(f"Dumped checkpoint {ckpt} successfully.")
 
     def load(self, ckpt:str, dtype=torch.bfloat16):
         """
@@ -262,7 +289,8 @@ class Trainer():
         """
         checkpoint = torch.load(ckpt, weights_only=False, map_location="cpu")
         if self.cfg != checkpoint["model_cfg"]:       
-            self.model = GPTModel(checkpoint["model_cfg"]) #reinitailize model
+            self.cfg.update(checkpoint["model_cfg"])
+            self.model = GPTModel(self.cfg) #reinitailize model
 
         self.num_epochs = checkpoint["num_epochs"] 
         self.global_step = checkpoint["global_step"]

@@ -39,7 +39,9 @@ GPT_CONFIG_124M = {
     "qkv_bias": False,  # Whether to use bias in QKV projections
     "lr": 4e-5,  # Learning rate
     "decay": 0.01,  # Weight decay
-    "accumulation_steps": 4, # grad accumulation update steps
+    "max_grad_norm": 1.0, # Max gradient clip
+    "accumulation_steps": 4, # Gradient accumulation update steps
+    "warmup_steps": 1000, # Warmup steps with a larger lr
     "device": torch.device(
         "mps" if torch.backends.mps.is_available() else (
             "cuda" if torch.cuda.is_available() else "cpu")
