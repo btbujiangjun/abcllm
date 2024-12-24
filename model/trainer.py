@@ -164,7 +164,7 @@ class Trainer():
                         print(
                             f"Rank:{rank} Epoch:{epoch + 1} Step:{self.global_step} "
                             f"Tokens seen:{tokens_seen}/{train_loader.token_size}, Speed:{speed:.2f}K tokens/sec, "
-                            f"LR: {self.optimizer.param_groups[0]['lr']:.8f}, "
+                            f"LR:{self.optimizer.param_groups[0]['lr']:.8f}, "
                             f"Loss(Total/Local/Val): {train_loss:.3f}/{local_loss:.3f}/{val_loss:.3f}"
                         )
 
