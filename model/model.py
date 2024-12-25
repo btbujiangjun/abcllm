@@ -256,6 +256,13 @@ class GELU(nn.Module):
             )
         )
 
+class SiLU(nn.Module):
+    def __init__(self):
+        super(SiLU, self).__init__()
+
+    def forward(self, x):
+        return x * torch.sigmoid(x)
+
 class RMSNorm(nn.Module):
     """
     Root Mean Square Layer Normalization (RMSNorm).

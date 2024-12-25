@@ -88,10 +88,10 @@ def main():
     test_generation(model, tokenizer)
 
     # Train and save the model
-    #train_and_save_model(model, tokenizer, train_loader, val_loader, dump_path)
+    train_and_save_model(model, tokenizer, train_loader, val_loader, dump_path)
 
     # Continue training after loading checkpoint
-    #load_and_continue_training(model, tokenizer, train_loader, val_loader, dump_path)
+    load_and_continue_training(model, tokenizer, train_loader, val_loader, dump_path)
 
 
 if __name__ == "__main__":

@@ -11,20 +11,17 @@ import torch
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf 
-from model.model import GPTModel
+from model.model import GPTModel, GPT_CONFIG_124M
 
 class PretrainGPT2:
     def __init__(self):
-        self.BASE_CONFIG = {
+        self.BASE_CONFIG = GPT_CONFIG_124M
+        self.BASE_CONFIG.update({
             "vocab_size": 50257,
             "context_length": 1024,
             "drop_rate": 0.0,
             "qkv_bias": True,
-            "lr": 5e-5,
-            "decay": 0.1,
-            "accumulation_steps": 4, # grad accumulation update steps
-            "device": torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
-        }
+        })
         self.MODEL_CONFIG ={
             "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
             "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
@@ -35,10 +32,7 @@ class PretrainGPT2:
     def load_tf_ckpt(self, choose_model, ckpt_dir, dtype=torch.bfloat16):
         
         model, model_size = self.init_model(choose_model)
-        
         params = self.__load_params(ckpt_dir, model_size)
-        #model.pos_emb.weight = self.__assign(model.pos_emb.weight, params['wpe'])
-        #model.tok_emb.weight = self.__assign(model.tok_emb.weight, params['wte'])
         self._assign(model.pos_emb.weight, params['wpe'])
         self._assign(model.tok_emb.weight, params['wte'])
 
