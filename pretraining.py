@@ -87,7 +87,7 @@ def train_worker(
     model = GPTModel(model_cfg)
     if is_distributed:
         model = DDP(model, device_ids=[rank])
-    trainer = Trainer(model, tokenizer)
+    trainer = Trainer(model, tokenizer, rank=rank)
 
     if args.warmup:
         ckpt_dir = args.output_dir
@@ -112,8 +112,7 @@ def train_worker(
             dump_steps=args.save_ckpt_freq,
             dump_path=args.output_dir,
             temperature=args.temperature,
-            top_k=args.top_k,
-            rank=rank
+            top_k=args.top_k
         )
     
         if is_main_processor:
@@ -133,7 +132,8 @@ def train_worker(
         )
 
     except KeyboardInterrupt:
-        trainer.dump(f"{args.output_dir}/model_final_interrupted.pth")
+        if rank == 0:
+            trainer.dump(f"{args.output_dir}/model_final_interrupted.pth")
 
 def for_server_conf(args, model_conf):
     #args.train_data = "/disk6/data/pretrain/pretrain_train_data.bin"

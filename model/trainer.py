@@ -55,7 +55,7 @@ class Trainer():
         num_epochs (int): Tracks the total number of completed epochs.
         global_step (int): Global training step counter.
     """
-    def __init__(self, model, tokenizer):
+    def __init__(self, model, tokenizer, rank=0):
         """
         Initialize the Trainer object.
 
@@ -67,7 +67,7 @@ class Trainer():
         self.model = model
         self.tokenizer = tokenizer
         self.wrapper = ModelWrapper()
-        self.rank = 0
+        self.rank = rank
         self.num_epochs = 0
         self.global_step = -1
 
@@ -119,7 +119,6 @@ class Trainer():
             val_losses (list): List of validation losses.
             track_tokens_seen (list): List of tokens seen at each evaluation step.
         """
-        self.rank = rank
         accumulation_steps = self.model.cfg["accumulation_steps"]
         max_grad_norm = self.model.cfg["max_grad_norm"]
         train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
@@ -163,7 +162,7 @@ class Trainer():
                         delta_tokens = tokens_seen - (track_tokens_seen[-1] if track_tokens_seen else 0)
                         speed = delta_tokens / 1000 / (time.time() - start_time)
                         print(
-                            f"Rank:{rank} Epoch:{epoch + 1} Step:{self.global_step} "
+                            f"Rank:{self.rank} Epoch:{epoch + 1} Step:{self.global_step} "
                             f"Tokens seen:{tokens_seen}/{train_loader.token_size}, Speed:{speed:.2f}K tokens/sec, "
                             f"LR:{self.model.optimizer.param_groups[0]['lr']:.8f}, "
                             f"Loss(Total/Local/Val): {train_loss:.3f}/{local_loss:.3f}/{val_loss:.3f}"
@@ -178,7 +177,7 @@ class Trainer():
                         start_time = time.time() #refresh timer
 
                     # Save checkpoint periodically
-                    if rank == 0 and self.global_step > 0 and self.global_step % dump_steps == 0:
+                    if self.rank == 0 and self.global_step > 0 and self.global_step % dump_steps == 0:
                         self.dump(f"{dump_path}/tmp_epoch_{self.num_epochs}_steps_{self.global_step}.ckpt")
                     # Generate sample text periodically
                     if self.global_step % sample_iter == 0:
