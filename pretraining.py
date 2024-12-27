@@ -114,7 +114,7 @@ def train_worker(
         )
     
         if is_main_processor:
-            trainer.dump(output_dir / "model_pg_final.pth")
+            trainer.dump(args.output_dir / "model_pg_final.pth")
     
         epochs_tensor = torch.linspace(0, args.num_epochs, len(train_losses))
         plot_losses(
@@ -123,12 +123,12 @@ def train_worker(
             train_losses, 
             local_losses,
             val_losses, 
-            output_dir)
+            args.output_dir)
 
         if is_distributed:
             cleanup()
     except KeyboardInterrupt:
-        file_name = output_dir / "model_final_interrupted.pth"
+        file_name = args.output_dir / "model_final_interrupted.pth"
         trainer.dump(file_name)
         print(f"Saved {file_name}")
 
