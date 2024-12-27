@@ -22,7 +22,7 @@ Date: 2024-12-16
 """
 
 
-
+import copy
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -47,6 +47,14 @@ GPT_CONFIG_124M = {
             "cuda" if torch.cuda.is_available() else "cpu")
     )
 }
+
+def CONFIG_OPERATION(CONFIG):
+    if "device" in CONFIG:
+        config = copy.deepcopy(CONFIG)
+        del config["device"]
+        return config
+    else:
+        return CONFIG
 
 class GPTModel(nn.Module):
     """

@@ -95,6 +95,7 @@ def train_worker(
         if len(ckpts) > 0:
             lastest_ckpt = max(ckpts, key=os.path.getmtime)
             trainer.load(lastest_ckpt)
+    torch.distributed.barrier()
 
     try:
         start_context = "宇宙起源"
@@ -116,6 +117,9 @@ def train_worker(
         if is_main_processor:
             trainer.dump(args.output_dir / "model_pg_final.pth")
     
+        if is_distributed:
+            cleanup()
+
         epochs_tensor = torch.linspace(0, args.num_epochs, len(train_losses))
         plot_losses(
             epochs_tensor, 
@@ -123,21 +127,21 @@ def train_worker(
             train_losses, 
             local_losses,
             val_losses, 
-            args.output_dir)
+            args.output_dir
+        )
 
-        if is_distributed:
-            cleanup()
     except KeyboardInterrupt:
         file_name = args.output_dir / "model_final_interrupted.pth"
         trainer.dump(file_name)
         print(f"Saved {file_name}")
 
 def for_server_conf(args, model_conf):
-    args.train_data = "/disk6/data/pretrain/pretrain_train_data.bin"
+    #args.train_data = "/disk6/data/pretrain/pretrain_train_data.bin"
+    args.train_data = "/disk6/data/baby_data/wudaocorpus_zh/wudaocorpus_zh_1.bin"
     args.val_data = "/disk6/data/pretrain/pretrain_val_data.bin"
     args.output_dir = "/disk6/data/baidubaike_checkpoints_multi_gpu"
-    args.print_sample_iter = 25
-    args.eval_freq = 5
+    args.print_sample_iter = 50
+    args.eval_freq = 10
     args.save_ckpt_freq = 1000
     args.batch_size = 4
     model_conf["context_length"] = 768
@@ -166,9 +170,9 @@ if __name__ == "__main__":
                         help='Batch size for training')
     parser.add_argument('--warmup', type=bool, default=True,
                         help='Warmup with the lastest checkpoint')
-    parser.add_argument('--temperature', type=float, default=1.0,
+    parser.add_argument('--temperature', type=float, default=1.5,
                         help='Increase output diversity and to reduce the probability of nonsensical sentences,')
-    parser.add_argument('--top_k', type=int, default=5,
+    parser.add_argument('--top_k', type=int, default=15,
                         help='restrict the sampled tokens to the top-k most likely tokens')
 
     args = parser.parse_args()

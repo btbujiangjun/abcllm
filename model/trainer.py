@@ -69,7 +69,7 @@ class Trainer():
         self.wrapper = ModelWrapper()
         self.rank = 0
         self.num_epochs = 0
-        self.global_step = 0
+        self.global_step = -1
 
     @property
     def model(self):
@@ -124,7 +124,7 @@ class Trainer():
         max_grad_norm = self.model.cfg["max_grad_norm"]
         train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
         train_loss, local_total_loss = 0, 0
-        tokens_seen, self.global_step, local_step = 0, -1, 0
+        tokens_seen, local_step = 0, 0
         start_time = time.time()
 
         schedular = LinearWarmupLinearDecayScheduler(
@@ -178,7 +178,7 @@ class Trainer():
 
                     # Save checkpoint periodically
                     if rank == 0 and self.global_step > 0 and self.global_step % dump_steps == 0:
-                        self.dump(f"{dump_path}/tmp_steps_{self.global_step}.ckpt")
+                        self.dump(f"{dump_path}/tmp_epoch_{self.num_epochs}_steps_{self.global_step}.ckpt")
                     # Generate sample text periodically
                     if self.global_step % sample_iter == 0:
                         self._generate_sample(start_context, temperature, top_k, eos_id)
@@ -206,8 +206,7 @@ class Trainer():
             top_k=top_k,
             eos_id=eos_id
         )
-        print(f"Generated sample:\n{generate_sample}")
-       
+        print(f"Rank {self.rank} Generated sample:\n{generate_sample}")
 
     def _compute_loss(self, input_batch, target_batch):
         """
@@ -246,16 +245,6 @@ class Trainer():
         return total_loss / num_batches
 
     def evaluate(self, val_loader, eval_iter):
-        """
-        Evaluate the model on training and validation data.
-
-        Args:
-            val_loader: DataLoader for validation data.
-            eval_iter (int): Number of batches to evaluate.
-
-        Returns:
-            tuple: Training loss and validation loss.
-        """
         self.model.eval()
         with torch.no_grad():
             val_loss = self._loader_loss(val_loader, num_batches=eval_iter)
@@ -263,12 +252,6 @@ class Trainer():
         return val_loss
 
     def dump(self, ckpt:str):
-        """
-        Save model checkpoint.
-
-        Args:
-            ckpt (str): Path to save the checkpoint.
-        """
         torch.save({
             "model_cfg": CONFIG_OPERATION(self.model.cfg)
             ,"num_epochs": self.num_epochs
@@ -280,14 +263,6 @@ class Trainer():
         print(f"Dumped checkpoint {ckpt} successfully.")
 
     def load(self, ckpt:str):
-        """
-        Load model checkpoint.
-
-        Args:
-            ckpt (str): Path to the checkpoint file.
-            dtype (torch.dtype, optional): Data type to convert model parameters to.
-        """
-        print(f"Loading ckpt:{ckpt} ...")
         checkpoint = torch.load(ckpt, weights_only=False, map_location="cpu")
         if CONFIG_OPERATION(self.model.cfg) != CONFIG_OPERATION(checkpoint["model_cfg"]):
             self.model.cfg.update(CONFIG_OPERATION(checkpoint["model_cfg"]))
@@ -303,7 +278,6 @@ class Trainer():
                     param.copy_(checkpoint["model_state_dict"][name].to(param.dtype)).to(device)
                 else:
                     print(f"Rank {self.rank} Warning: {name} not found in state_dict.")
-
-        print(f"Loading optimizer state_dict ...")
         self.model.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        
         print(f"Rank {self.rank} Loaded checkpoint {ckpt} with {self.num_epochs} epochs and step {self.global_step}.")
