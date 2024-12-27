@@ -117,7 +117,7 @@ def train_worker(
         )
     
         if is_main_processor:
-            trainer.dump(args.output_dir / "model_pg_final.pth")
+            trainer.dump(f"{args.output_dir}/model_pg_final.pth")
     
         if is_distributed:
             cleanup()
@@ -133,9 +133,7 @@ def train_worker(
         )
 
     except KeyboardInterrupt:
-        file_name = args.output_dir / "model_final_interrupted.pth"
-        trainer.dump(file_name)
-        print(f"Saved {file_name}")
+        trainer.dump(f"{args.output_dir}/model_final_interrupted.pth")
 
 def for_server_conf(args, model_conf):
     #args.train_data = "/disk6/data/pretrain/pretrain_train_data.bin"
