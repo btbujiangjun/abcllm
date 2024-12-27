@@ -123,8 +123,8 @@ class Trainer():
         accumulation_steps = self.model.cfg["accumulation_steps"]
         max_grad_norm = self.model.cfg["max_grad_norm"]
         train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
-        train_loss, local_total_loss = 0, 0
-        tokens_seen, local_step = 0, 0
+        train_loss, local_loss = 0, 0
+        tokens_seen, local_step, local_total_step = 0, 0, 0
         start_time = time.time()
 
         schedular = LinearWarmupLinearDecayScheduler(
@@ -141,7 +141,7 @@ class Trainer():
                 loss = self._compute_loss(input_batch, target_batch) / accumulation_steps
                 loss.backward()
                 
-                local_total_loss += loss.item()
+                local_loss += loss.item()
                 tokens_seen += input_batch.numel()
                 
                 #Update parameters after accumulating gradients
@@ -157,8 +157,9 @@ class Trainer():
                     if self.global_step % eval_freq == 0:
                         val_loss = self.evaluate(val_loader, eval_iter)
                         
-                        local_loss = local_total_loss / local_step
-                        train_loss += (local_loss - train_loss) / (self.global_step + 1) 
+                        local_loss = local_loss / local_step
+                        local_total_step += 1
+                        train_loss += (local_loss - train_loss) / local_total_step 
                         delta_tokens = tokens_seen - (track_tokens_seen[-1] if track_tokens_seen else 0)
                         speed = delta_tokens / 1000 / (time.time() - start_time)
                         print(
@@ -173,7 +174,7 @@ class Trainer():
                         val_losses.append(val_loss)
                         track_tokens_seen.append(tokens_seen)
 
-                        local_total_loss, local_step = 0, 0 #refresh local matrix
+                        local_loss, local_step = 0, 0 #refresh local matrix
                         start_time = time.time() #refresh timer
 
                     # Save checkpoint periodically
