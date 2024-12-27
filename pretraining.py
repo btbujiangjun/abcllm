@@ -95,7 +95,9 @@ def train_worker(
         if len(ckpts) > 0:
             lastest_ckpt = max(ckpts, key=os.path.getmtime)
             trainer.load(lastest_ckpt)
-    torch.distributed.barrier()
+    
+    if is_distributed:    
+        torch.distributed.barrier()
 
     try:
         start_context = "宇宙起源"
