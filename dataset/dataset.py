@@ -228,7 +228,7 @@ class GPTDataLoader():
             ,batch_size=4
             ,max_length=256
             ,stride=128):
-        assert train_ratio > 0.0 and train_ratio < 1.0, "train_ratio must be large than 0.0 and less then 1.0"
+        assert train_ratio > 0.0 and train_ratio < 1.0, "train_ratio should in (0.0, 1.0)"
         split_idx = int(len(text) * train_ratio)
         train_text, val_text = text[:split_idx], text[split_idx:]
 
@@ -302,16 +302,24 @@ class LabeledDataset(Dataset):
         return max([len(encoded_id) for encoded_id in self.encoded_ids])
 
 class InstructionDataset(Dataset):
-    def __init__(self, json_file, tokenizer, file_encoding="utf-8"):
+    def __init__(self, 
+            json_file, 
+            tokenizer, 
+            max_length=1024, 
+            ignore_index=-100, 
+            file_encoding="utf-8"
+        ):
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.ignore_index = ignore_index
+        
         with open(json_file, "r", encoding=file_encoding) as f:
             self.data = json.load(f)
         self.encoded_ids = []
-
         for entry in self.data:
             full_text = self.format_input(entry, with_output=True)
-            self.encoded_ids.append(
-                tokenizer.encode(full_text)
-            )
+            self.encoded_ids.append(tokenizer.encode(full_text))
+        self.token_size = len(self.data) * max_length
 
     @staticmethod
     def format_input(entry, with_output=False):
@@ -325,50 +333,18 @@ class InstructionDataset(Dataset):
         return instruction_text + input_text + response_text
 
     def __getitem__(self, index):
-        return self.encoded_ids[index]
+        item = self.encoded_ids[index][:self.max_length].copy() + [self.tokenizer.eos_id]
+        item = item + [self.tokenizer.eos_id] * (self.max_length + 1 - len(item))
+        input_tensor = torch.tensor(item[:-1]) #truncate the last token
+        target_tensor = torch.tensor(item[1:]) #shift +1 to the right for targets
+        
+        mask = (target_tensor == self.tokenizer.eos_id)
+        indices = torch.nonzero(mask).squeeze()
+        if indices.numel() > 1:
+            target_tensor[indices[1:]] = self.ignore_index
+
+        return input_tensor, target_tensor
 
     def __len__(self):
-        return len(self.data)
+        return len(self.encoded_ids)
 
-
-def _INSTRUCTION_COLLATE_FN(
-            batch,
-            pad_token_id=50256,
-            ignore_index=-100,
-            allowed_max_length=None,
-            device="cpu"):
-    batch_max_length = max(len(item)+1 for item in batch)
-    inputs_lst, targets_lst = [], []
-
-    for item in batch:
-        new_item = item.copy()
-        new_item += [pad_token_id] #add <|endoftext|> token
-        padded = (
-            new_item + [pad_token_id] * (batch_max_length - len(new_item))
-        )
-
-        inputs = torch.tensor(padded[:-1]) #truncate the last token
-        targets = torch.tensor(padded[1:]) #shift +1 to the right for targets
-
-        mask = (targets == pad_token_id)
-        indices = torch.nonzero(mask).squeeze()
-
-        if indices.numel() > 1:
-            targets[indices[1:]] = ignore_index
-
-        if allowed_max_length is not None:
-            inputs = inputs[:allowed_max_length]
-            targets = targets[:allowed_max_length]
-
-        inputs_lst.append(inputs)
-        targets_lst.append(targets)
-
-    inputs_tensor = torch.stack(inputs_lst).to(device)
-    targets_tensor = torch.stack(targets_lst).to(device)
-
-    return inputs_tensor, targets_tensor
-
-INSTRUCTION_COLLATE_FN = partial(
-    _INSTRUCTION_COLLATE_FN,
-    allowed_max_length=1024
-)
