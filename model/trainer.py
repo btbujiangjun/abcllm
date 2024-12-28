@@ -70,6 +70,7 @@ class Trainer():
         self.rank = rank
         self.num_epochs = 0
         self.global_step = -1
+        self.scheduler()
 
     @property
     def model(self):
@@ -81,7 +82,14 @@ class Trainer():
     @model.setter
     def model(self, value):
         self._model = value
- 
+
+    def scheduler(self):
+        self.scheduler = LinearWarmupLinearDecayScheduler(
+            self.model.optimizer, 
+            self.model.cfg["warmup_steps"], 
+            len(train_loader)
+        )
+
     def train(self
             ,train_loader
             ,val_loader
@@ -123,14 +131,10 @@ class Trainer():
         max_grad_norm = self.model.cfg["max_grad_norm"]
         train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
         train_loss, local_loss = 0, 0
-        tokens_seen, local_step, local_total_step = 0, 0, 0
+        tokens_seen, total_tokens = 0, num_epochs * train_loader.token_size
+        local_step, local_total_step = 0, 0
+        samples_seen, total_samples = 0, num_epochs * len(train_loader)
         start_time = time.time()
-
-        schedular = LinearWarmupLinearDecayScheduler(
-            self.model.optimizer, 
-            self.model.cfg["warmup_steps"], 
-            len(train_loader)
-        )
 
         for epoch in range(num_epochs):
             self.model.train()
@@ -142,12 +146,14 @@ class Trainer():
                 
                 local_loss += loss.item()
                 tokens_seen += input_batch.numel()
-                
+                samples_seen += input_batch.shape[0]
+
                 #Update parameters after accumulating gradients
                 if (i + 1) % accumulation_steps == 0 or (i + 1) == len(train_loader):
                     clip_grad_norm_(self.model.parameters(), max_norm=max_grad_norm)
                     self.model.optimizer.step() #Update parameter
-                    schedular.step() #Update learning rate
+                    if self.scheduler:
+                        self.scheduler.step() #Update learning rate
                     self.model.optimizer.zero_grad()
                     self.global_step += 1
                     local_step += 1
@@ -163,7 +169,8 @@ class Trainer():
                         speed = delta_tokens / 1000 / (time.time() - start_time)
                         print(
                             f"Rank:{self.rank} Epoch:{epoch + 1} Step:{self.global_step} "
-                            f"Tokens seen:{tokens_seen}/{train_loader.token_size}, Speed:{speed:.2f}K tokens/sec, "
+                            f"Samples seen:{samples_seen}/{total_samples} "
+                            f"Tokens seen:{tokens_seen}/{total_tokens}, Speed:{speed:.2f}K tokens/sec, "
                             f"LR:{self.model.optimizer.param_groups[0]['lr']:.8f}, "
                             f"Loss(Total/Local/Val): {train_loss:.3f}/{local_loss:.3f}/{val_loss:.3f}"
                         )
@@ -181,13 +188,22 @@ class Trainer():
                         self.dump(f"{dump_path}/tmp_epoch_{self.num_epochs}_steps_{self.global_step}.ckpt")
                     # Generate sample text periodically
                     if self.global_step % sample_iter == 0:
-                        self._generate_sample(start_context, temperature, top_k, eos_id)
-       
+                        response = self.generate(
+                            start_context, 
+                            self.model.cfg["context_length"], 
+                            temperature, 
+                            top_k, 
+                            eos_id
+                        )
+                        print(f"Rank {self.rank} Generated sample:\n{response}")
             self.num_epochs += 1
+
+        if rank == 0:
+            self.dump(f"{dump_path}/final_epoch_{self.num_epochs}_steps_{self.global_step}.ckpt")
         
         return train_losses, local_losses, val_losses, track_tokens_seen
 
-    def _generate_sample(self, start_context, temperature, top_k, eos_id):
+    def generate(self, start_context, max_generate_tokens=None, temperature=None, top_k=None, eos_id=None):
         """
         Generate sample text from the model.
 
@@ -200,13 +216,13 @@ class Trainer():
         generate_sample = self.wrapper.generate(
             self.model, 
             start_context, 
-            self.tokenizer, 
-            self.model.cfg["context_length"],
+            self.tokenizer,
+            max_generate_tokens,
             temperature=temperature,
             top_k=top_k,
             eos_id=eos_id
         )
-        print(f"Rank {self.rank} Generated sample:\n{generate_sample}")
+        return generate_sample
 
     def _compute_loss(self, input_batch, target_batch):
         """
@@ -223,7 +239,10 @@ class Trainer():
         target_batch = target_batch.to(self.model.device)
 
         logits = self.model(input_batch)
-        return nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten().long())
+        return nn.functional.cross_entropy(
+            logits.flatten(0, 1), 
+            target_batch.flatten().long()
+        )
 
     def _loader_loss(self, data_loader, num_batches=None):
         """
