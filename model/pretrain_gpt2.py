@@ -100,13 +100,13 @@ class PretrainGPT2:
         model.to(dtype).to(self.BASE_CONFIG["device"])
         model.reset_optimizer()
 
-        print(f"gpt2 tf_ckpt {ckpt_dir} loaded.")
+        print(f"Loaded GPT2 tf_ckpt: {ckpt_dir}.")
 
         return model
 
     def init_model(self, choose_model, dtype=torch.bfloat16):
         assert choose_model in self.MODEL_CONFIG.keys(), (
-            f"model {choose_model} not exist. plz choose :{self.MODEL_CONFIG.keys}"
+            f"Model {choose_model} not exist. plz choose :{self.MODEL_CONFIG.keys}"
         )
 
         self.BASE_CONFIG.update(self.MODEL_CONFIG[choose_model])
