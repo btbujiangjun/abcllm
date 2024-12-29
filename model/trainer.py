@@ -90,6 +90,12 @@ class Trainer():
             len(train_loader)
         )
 
+    def loss_function(self, logits, target):
+        return nn.functional.cross_entropy(
+            logits.flatten(0, 1),
+            target.flatten().long()
+        )
+
     def train(self
             ,train_loader
             ,val_loader
@@ -133,7 +139,7 @@ class Trainer():
         train_loss, local_loss = 0, 0
         tokens_seen, total_tokens = 0, num_epochs * train_loader.token_size
         local_step, local_total_step = 0, 0
-        samples_seen, total_samples = 0, num_epochs * len(train_loader)
+        samples_seen, total_samples = 0, num_epochs * train_loader.batch_size * len(train_loader)
         start_time = time.time()
 
         for epoch in range(num_epochs):
@@ -239,10 +245,7 @@ class Trainer():
         target_batch = target_batch.to(self.model.device)
 
         logits = self.model(input_batch)
-        return nn.functional.cross_entropy(
-            logits.flatten(0, 1), 
-            target_batch.flatten().long()
-        )
+        return self.loss_function(logits, target_batch)
 
     def _loader_loss(self, data_loader, num_batches=None):
         """
