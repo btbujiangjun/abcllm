@@ -22,5 +22,5 @@ class InstructionFinetune(Trainer):
             max_generate_tokens = self.max_generate_tokens
         response_text = super().generate(input_text, max_generate_tokens, temperature, top_k, eos_id)
         response_text = response_text[len(input_text):].replace("\n### Response:", "").strip()
-        return f"Instruction Finetune:\nStart_Context:{input_text}\nGenerate_Text:{response_text}\n{'*' * 50}"
+        return f"Instruction Finetune:\nStart_Context:{input_text}\n{'*' * 80}\nGenerate_Text:{response_text}\n{'*' * 80}"
 
