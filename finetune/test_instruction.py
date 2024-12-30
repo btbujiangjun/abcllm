@@ -57,7 +57,7 @@ if os.path.isfile(ckpt):
 finetune.train(
     train_loader, 
     val_loader,
-    num_epochs=2,
+    num_epochs=4,
     eval_freq=5,
     eval_iter=5,
     dump_path=ckpt,

@@ -362,7 +362,7 @@ class ModelWrapper:
                 )
 
             # Apply temperature scaling and sample from probabilities
-            if temperature > 0.0:
+            if temperature is not None and temperature > 0.0:
                 probs = torch.softmax(logits / temperature, dim=-1)
                 ids_next = torch.multinomial(probs, num_samples=1)
             else:
