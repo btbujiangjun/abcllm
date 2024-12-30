@@ -51,7 +51,7 @@ model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
 finetune = InstructionFinetune(model, tokenizer, max_generate_tokens=256)
 finetune.Ignore_index = ignore_index
 
-ckpt="./data/tmp/finetune/instruct_finetune.ckpt"
+ckpt="./data/tmp/finetune/instruct"
 if os.path.isfile(ckpt):
     finetune.load(ckpt)
 finetune.train(
@@ -63,7 +63,7 @@ finetune.train(
     dump_path=ckpt,
     start_context=val_dataset.data[0]
 )
-
+ckpt += "/final.ckpt"
 finetune.dump(ckpt)
 finetune.load(ckpt)
 
