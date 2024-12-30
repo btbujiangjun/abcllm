@@ -49,7 +49,7 @@ val_loader = ABCDataLoader(
 pretrain_gpt2 = PretrainGPT2()
 model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
 finetune = InstructionFinetune(model, tokenizer, max_generate_tokens=256)
-finetune.Ignore_index = ignore_index
+finetune.ignore_index = ignore_index
 
 ckpt="./data/tmp/finetune/instruct"
 """

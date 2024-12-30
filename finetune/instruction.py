@@ -20,7 +20,7 @@ class InstructionFinetune(Trainer):
     def scheduler(self):
         self.scheduler = None
 
-    def Ignore_index(self, value):
+    def ignore_index(self, value):
         self.ignore_index = value
 
     def loss_function(self, logits, target):
