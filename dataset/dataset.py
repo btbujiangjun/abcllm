@@ -309,17 +309,18 @@ class InstructionDataset(Dataset):
             ignore_index=-100, 
             file_encoding="utf-8"
         ):
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-        self.ignore_index = ignore_index
-        
         with open(json_file, "r", encoding=file_encoding) as f:
             self.data = json.load(f)
+        
         self.encoded_ids = []
         for entry in self.data:
             full_text = self.format_input(entry, with_output=True)
-            self.encoded_ids.append(tokenizer.encode(full_text))
-        self.token_size = len(self.data) * max_length
+            self.encoded_ids.append(tokenizer.encode(full_text)[:max_length])
+        
+        self.max_length = min(max_length, max([len(item) for item in self.encoded_ids]))
+        self.tokenizer = tokenizer
+        self.token_size = len(self.data) * self.max_length
+        self.ignore_index = ignore_index
 
     @staticmethod
     def format_input(entry, with_output=False):
@@ -333,17 +334,20 @@ class InstructionDataset(Dataset):
         return instruction_text + input_text + response_text
 
     def __getitem__(self, index):
-        item = self.encoded_ids[index][:self.max_length].copy() + [self.tokenizer.eos_id]
+        item = self.encoded_ids[index].copy() + [self.tokenizer.eos_id]
         item = item + [self.tokenizer.eos_id] * (self.max_length + 1 - len(item))
         input_tensor = torch.tensor(item[:-1]) #truncate the last token
         target_tensor = torch.tensor(item[1:]) #shift +1 to the right for targets
-        
+       
+        #Don't compute loss on ignore_index
         mask = (target_tensor == self.tokenizer.eos_id)
         indices = torch.nonzero(mask).squeeze()
         if indices.numel() > 1:
             target_tensor[indices[1:]] = self.ignore_index
+
         return input_tensor, target_tensor
 
     def __len__(self):
         return len(self.encoded_ids)
+
 

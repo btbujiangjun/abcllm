@@ -274,6 +274,9 @@ class Trainer():
         return val_loss
 
     def dump(self, ckpt:str):
+        save_dir = os.path.dirname(ckpt)
+        os.makedirs(save_dir, exist_ok=True)
+        
         torch.save({
             "model_cfg": CONFIG_OPERATION(self.model.cfg)
             ,"num_epochs": self.num_epochs
