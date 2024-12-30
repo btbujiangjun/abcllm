@@ -16,8 +16,12 @@ num_workers = 0
 batch_size = 8
 
 tokenizer = GPT2Tokenizer()
-
-train_dataset = InstructionDataset("./data/finetune/train-instruction-data.json", tokenizer)
+ignore_index = -200
+train_dataset = InstructionDataset(
+    "./data/finetune/train-instruction-data.json", 
+    tokenizer,
+    ignore_index=ignore_index
+)
 train_loader = ABCDataLoader(
     train_dataset,
     batch_size=batch_size,
@@ -27,7 +31,11 @@ train_loader = ABCDataLoader(
     token_size=train_dataset.token_size
 )
 
-val_dataset = InstructionDataset("./data/finetune/val-instruction-data.json", tokenizer)
+val_dataset = InstructionDataset(
+    "./data/finetune/val-instruction-data.json", 
+    tokenizer,
+    ignore_index=ignore_index
+)
 val_loader = ABCDataLoader(
     val_dataset,
     batch_size=batch_size,
@@ -41,6 +49,7 @@ val_loader = ABCDataLoader(
 pretrain_gpt2 = PretrainGPT2()
 model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
 finetune = InstructionFinetune(model, tokenizer, max_generate_tokens=256)
+finetune.Ignore_index = ignore_index
 
 ckpt="./data/tmp/finetune/instruct_finetune.ckpt"
 if os.path.isfile(ckpt):

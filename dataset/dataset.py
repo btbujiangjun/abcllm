@@ -342,7 +342,6 @@ class InstructionDataset(Dataset):
         indices = torch.nonzero(mask).squeeze()
         if indices.numel() > 1:
             target_tensor[indices[1:]] = self.ignore_index
-
         return input_tensor, target_tensor
 
     def __len__(self):
