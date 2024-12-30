@@ -15,7 +15,7 @@ class InstructionFinetune(Trainer):
 
     def scheduler(self):
         self.scheduler = None
-
+    
     def generate(self, start_context, max_generate_tokens=None, temperature=None, top_k=None, eos_id=None):
         input_text = InstructionDataset.format_input(start_context)
         if self.max_generate_tokens > 0:
