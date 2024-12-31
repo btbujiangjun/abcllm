@@ -52,7 +52,6 @@ finetune = InstructionFinetune(model, tokenizer, max_generate_tokens=256)
 finetune.ignore_index = ignore_index
 
 ckpt="./data/tmp/finetune/instruct"
-"""
 if os.path.isfile(ckpt):
     finetune.load(ckpt)
 finetune.train(
@@ -66,7 +65,6 @@ finetune.train(
 )
 ckpt += "/final.ckpt"
 finetune.dump(ckpt)
-"""
 finetune.load(ckpt)
 
 for data in val_dataset.data:
