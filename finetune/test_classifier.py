@@ -66,10 +66,11 @@ finetune = ClassifierFinetune(model, tokenizer, num_classes=2)
 finetune.train(
     train_loader, 
     val_loader,
-    num_epochs=2,
+    num_epochs=5,
     eval_freq=1,
     eval_iter=1,
     start_context=text,
+    max_generate_tokens=train_dataset.max_length
 )
 
 ckpt="./data/tmp/finetune/spam_finetune.ckpt"
@@ -79,10 +80,11 @@ finetune.load(ckpt)
 finetune.train(
     test_loader, 
     val_loader,
-    num_epochs=2,
+    num_epochs=5,
     eval_freq=1,
     eval_iter=1,
     start_context=text,
+    max_generate_tokens=train_dataset.max_length
 )
 
 texts = (
@@ -99,6 +101,6 @@ texts = (
     "Win a £1000 cash prize or a prize worth £5000"
 )
 for text in texts:
-    predicted_label = "spam" if finetune.classifier(text, train_dataset.max_length) else "not spam"
+    predicted_label = "spam" if finetune.generate(text, train_dataset.max_length) else "not spam"
     print(f"text:\n{text}\npredicted label is:{predicted_label}.")
 
