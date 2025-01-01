@@ -26,7 +26,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torch.nn.parallel import DistributedDataParallel as DDP
-from model.model import GPTModel, GPT_CONFIG_124M, CONFIG_OPERATION, ModelWrapper
+from model.model import GPTModel, CONFIG_OPERATION, ModelWrapper
 
 class LinearWarmupLinearDecayScheduler(torch.optim.lr_scheduler._LRScheduler):
     def __init__(self, optimizer, warmup_steps, total_steps, last_epoch=-1):
@@ -96,9 +96,6 @@ class Trainer():
             target.flatten().long()
         )
 
-    def epoch_finished(self):
-        self.num_epochs += 1
-
     def train(self
             ,train_loader
             ,val_loader
@@ -106,6 +103,7 @@ class Trainer():
             ,eval_freq=5
             ,eval_iter=5
             ,start_context=None
+            ,max_generate_tokens=None
             ,sample_iter=10_000
             ,dump_path="./"
             ,dump_steps=10_000
@@ -138,6 +136,9 @@ class Trainer():
         """
         accumulation_steps = self.model.cfg["accumulation_steps"]
         max_grad_norm = self.model.cfg["max_grad_norm"]
+        if max_generate_tokens is None:
+            max_generate_tokens = self.model.cfg["context_length"]
+        
         train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
         train_loss, local_loss = 0, 0
         tokens_seen, total_tokens = 0, num_epochs * train_loader.token_size
@@ -199,13 +200,13 @@ class Trainer():
                     if start_context is not None and self.global_step % sample_iter == 0:
                         response = self.generate(
                             start_context, 
-                            self.model.cfg["context_length"], 
+                            max_generate_tokens,
                             temperature, 
                             top_k, 
                             eos_id
                         )
                         print(f"Rank {self.rank} Generated sample:\n{response}")
-            self.epoch_finished()
+            self.num_epochs += 1
 
         if rank == 0:
             self.dump(f"{dump_path}/final_epoch_{self.num_epochs}_steps_{self.global_step}.ckpt")
