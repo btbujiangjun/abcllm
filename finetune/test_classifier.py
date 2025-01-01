@@ -3,7 +3,7 @@ import sys
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from dataset.dataset import GPTDataset, GPTDataLoader, LabeledDataset
+from dataset.dataset import GPTDataset, ABCDataLoader, LabeledDataset
 from tokenizer.tokenizer import GPT2Tokenizer, SimpleTokenizer
 from model.pretrain_gpt2 import PretrainGPT2
 from finetune.classifier import ClassifierFinetune
@@ -35,38 +35,55 @@ test_dataset = LabeledDataset(
     tokenizer=tokenizer
 )
 
-train_loader = DataLoader(
+train_loader = ABCDataLoader(
     dataset=train_dataset,
     batch_size=batch_size,
     shuffle=True,
     num_workers=num_workers,
     drop_last=True,
+    token_size = train_dataset.token_size,
 )
 
-val_loader = DataLoader(
+val_loader = ABCDataLoader(
     dataset=val_dataset,
     batch_size=batch_size,
     num_workers=num_workers,
     drop_last=False,
+    token_size = val_dataset.token_size,
 )
 
-test_loader = DataLoader(
+test_loader = ABCDataLoader(
     dataset=test_dataset,
     batch_size=batch_size,
     num_workers=num_workers,
     drop_last=False,
+    token_size = test_dataset.token_size,
 )
 
 pretrain_gpt2 = PretrainGPT2()
-model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
+model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2", dtype=torch.float32)
 finetune = ClassifierFinetune(model, tokenizer, num_classes=2)
-#finetune.finetune(train_loader, val_loader, num_epochs=2)
+finetune.train(
+    train_loader, 
+    val_loader,
+    num_epochs=2,
+    eval_freq=1,
+    eval_iter=1,
+    start_context=text,
+)
 
 ckpt="./data/tmp/finetune/spam_finetune.ckpt"
 finetune.dump(ckpt)
 finetune.load(ckpt)
 
-finetune.finetune(test_loader, val_loader, num_epochs=5)
+finetune.train(
+    test_loader, 
+    val_loader,
+    num_epochs=2,
+    eval_freq=1,
+    eval_iter=1,
+    start_context=text,
+)
 
 texts = (
     "You are a winner you have been specially selected to receive $1000 cash or a $2000 award.",
