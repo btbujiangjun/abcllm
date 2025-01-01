@@ -263,18 +263,17 @@ class LabeledDataset(Dataset):
             ,tokenizer
             ,max_length=None
             ,pad_token_id=None
-            ,text_field="Text"):
-        assert os.path.isfile(csv_file), cvs_file
-        self.data = pd.read_csv(csv_file)
-        self.encoded_ids = [
-            tokenizer.encode(text) for text in self.data[text_field]
-        ]
+            ,text_field="Text"
+            ,label_field="Label"):
+        assert os.path.isfile(csv_file), f"File {cvs_file} not found."
+        data = pd.read_csv(csv_file)
+        self.encoded_ids, self.labels = zip(*[(tokenizer.encode(text), label) for text, label in zip(data[text_field], data[label_field])])
 
         if pad_token_id is None:
             pad_token_id = tokenizer.eos_id
 
         if max_length is None:
-            self.max_length = self._longest_encoded_length()
+            self.max_length = max([len(encoded_id) for encoded_id in self.encoded_ids])
         else:
             self.max_length = max_length
             self.encoded_ids = [
@@ -285,21 +284,16 @@ class LabeledDataset(Dataset):
             encoded_id + [pad_token_id] * (self.max_length - len(encoded_id))
             for encoded_id in self.encoded_ids
         ]
+        self.token_size = self.max_length * len(self.encoded_ids)
 
-    def __getitem__(self, index: int, label_field="Label"):
-        encoded_id = self.encoded_ids[index]
-        label = self.data.iloc[index][label_field]
-        
+    def __getitem__(self, index: int):
         return (
-            torch.tensor(encoded_id, dtype=torch.long)
-            , torch.tensor(label, dtype=torch.long)
+            torch.tensor(self.encoded_ids[index], dtype=torch.long)
+            , torch.tensor(self.labels[index], dtype=torch.long)
         )
 
     def __len__(self) -> int:
-        return len(self.data)
-
-    def _longest_encoded_length(self) -> int:
-        return max([len(encoded_id) for encoded_id in self.encoded_ids])
+        return len(self.labels)
 
 class InstructionDataset(Dataset):
     def __init__(self, 
@@ -309,17 +303,16 @@ class InstructionDataset(Dataset):
             ignore_index=-100, 
             file_encoding="utf-8"
         ):
+        self.encoded_ids = []
         with open(json_file, "r", encoding=file_encoding) as f:
             self.data = json.load(f)
-        
-        self.encoded_ids = []
-        for entry in self.data:
-            full_text = self.format_input(entry, with_output=True)
-            self.encoded_ids.append(tokenizer.encode(full_text)[:max_length])
+            for entry in self.data:
+                full_text = self.format_input(entry, with_output=True)
+                self.encoded_ids.append(tokenizer.encode(full_text)[:max_length])
         
         self.max_length = min(max_length, max([len(item) for item in self.encoded_ids]))
         self.tokenizer = tokenizer
-        self.token_size = len(self.data) * self.max_length
+        self.token_size = len(self.encoded_ids) * self.max_length
         self.ignore_index = ignore_index
 
     @staticmethod
