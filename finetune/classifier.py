@@ -34,9 +34,6 @@ class ClassifierFinetune(Trainer):
         model.cfg.update({"num_classes":num_classes})
         model.reset_optimizer()
 
-    def scheduler(self):
-        self.scheduler = None
-
     def loss_function(self, logits, target):
         logits = logits[:, -1, :]
         return torch.nn.functional.cross_entropy(logits, target)

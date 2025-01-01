@@ -17,9 +17,6 @@ class InstructionFinetune(Trainer):
         self.max_generate_tokens = max_generate_tokens
         self.ignore_index = -999
 
-    def scheduler(self):
-        self.scheduler = None
-
     def ignore_index(self, value):
         self.ignore_index = value
 

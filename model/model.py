@@ -49,12 +49,11 @@ GPT_CONFIG_124M = {
 }
 
 def CONFIG_OPERATION(CONFIG):
-    if "device" in CONFIG:
-        config = copy.deepcopy(CONFIG)
-        del config["device"]
-        return config
-    else:
-        return CONFIG
+    config = copy.deepcopy(CONFIG)
+    for item in ["warmup_steps", "device"]:
+        if item in config:
+            del config[item]
+    return config
 
 class GPTModel(nn.Module):
     """

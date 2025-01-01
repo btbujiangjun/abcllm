@@ -55,7 +55,7 @@ class Trainer():
         num_epochs (int): Tracks the total number of completed epochs.
         global_step (int): Global training step counter.
     """
-    def __init__(self, model, tokenizer, rank=0):
+    def __init__(self, model, tokenizer, scheduler=None, rank=0):
         """
         Initialize the Trainer object.
 
@@ -66,11 +66,11 @@ class Trainer():
         self._model = None
         self.model = model
         self.tokenizer = tokenizer
+        self.scheduler = scheduler
         self.wrapper = ModelWrapper()
         self.rank = rank
         self.num_epochs = 0
         self.global_step = -1
-        self.scheduler()
 
     @property
     def model(self):
@@ -83,12 +83,13 @@ class Trainer():
     def model(self, value):
         self._model = value
 
-    def scheduler(self):
+    def init_scheduler(self, max_steps):
         self.scheduler = LinearWarmupLinearDecayScheduler(
-            self.model.optimizer, 
-            self.model.cfg["warmup_steps"], 
-            len(train_loader)
-        )
+            self.model.optimizer,
+            self.model.cfg["warmup_steps"],
+            max_steps
+    )
+
 
     def loss_function(self, logits, target):
         return nn.functional.cross_entropy(
@@ -134,6 +135,9 @@ class Trainer():
             val_losses (list): List of validation losses.
             track_tokens_seen (list): List of tokens seen at each evaluation step.
         """
+        if self.scheduler is None:
+            self.init_scheduler(len(train_loader))
+
         accumulation_steps = self.model.cfg["accumulation_steps"]
         max_grad_norm = self.model.cfg["max_grad_norm"]
         if max_generate_tokens is None:
@@ -152,7 +156,7 @@ class Trainer():
             for i, (input_batch, target_batch) in enumerate(train_loader):
                 #Scale loss for gradient accumulation
                 loss = self._compute_loss(input_batch, target_batch) / accumulation_steps
-                loss.backward()
+                loss.backward() #gridient backward
                 
                 local_loss += loss.item()
                 tokens_seen += input_batch.numel()
@@ -162,9 +166,8 @@ class Trainer():
                 if (i + 1) % accumulation_steps == 0 or (i + 1) == len(train_loader):
                     clip_grad_norm_(self.model.parameters(), max_norm=max_grad_norm)
                     self.model.optimizer.step() #Update parameter
-                    if self.scheduler:
-                        self.scheduler.step() #Update learning rate
                     self.model.optimizer.zero_grad()
+                    self.scheduler.step() #Update learning rate
                     self.global_step += 1
                     local_step += 1
 
