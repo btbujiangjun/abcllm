@@ -96,13 +96,16 @@ class Trainer():
             target.flatten().long()
         )
 
+    def epoch_finished(self):
+        self.num_epochs += 1
+
     def train(self
             ,train_loader
             ,val_loader
-            ,num_epochs
-            ,eval_freq
-            ,eval_iter
-            ,start_context
+            ,num_epochs=1
+            ,eval_freq=5
+            ,eval_iter=5
+            ,start_context=None
             ,sample_iter=10_000
             ,dump_path="./"
             ,dump_steps=10_000
@@ -193,7 +196,7 @@ class Trainer():
                     if self.rank == 0 and self.global_step > 0 and self.global_step % dump_steps == 0:
                         self.dump(f"{dump_path}/tmp_epoch_{self.num_epochs}_steps_{self.global_step}.ckpt")
                     # Generate sample text periodically
-                    if self.global_step % sample_iter == 0:
+                    if start_context is not None and self.global_step % sample_iter == 0:
                         response = self.generate(
                             start_context, 
                             self.model.cfg["context_length"], 
@@ -202,7 +205,7 @@ class Trainer():
                             eos_id
                         )
                         print(f"Rank {self.rank} Generated sample:\n{response}")
-            self.num_epochs += 1
+            self.epoch_finished()
 
         if rank == 0:
             self.dump(f"{dump_path}/final_epoch_{self.num_epochs}_steps_{self.global_step}.ckpt")
@@ -243,7 +246,6 @@ class Trainer():
         """
         input_batch = input_batch.to(self.model.device)
         target_batch = target_batch.to(self.model.device)
-
         logits = self.model(input_batch)
         return self.loss_function(logits, target_batch)
 
