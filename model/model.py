@@ -67,6 +67,8 @@ class GPTModel(nn.Module):
         self.cfg = cfg
         device = cfg["device"]
 
+        self.pre_x = None
+
         # Embedding layers
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"]).to(device)
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"]).to(device)
@@ -157,11 +159,9 @@ class GPTModel(nn.Module):
 
         # Transformer blocks
         x = self.trf_blocks(x)
-
         # Output
         x = self.final_norm(x)
-        logits = self.out_head(x)
-        return logits
+        return self.out_head(x)
 
 class TransformerBlock(nn.Module):
     """
@@ -213,7 +213,7 @@ class LayerNorm(nn.Module):
     """
     Custom Layer Normalization implementation.
     """
-    def __init__(self, emb_dim, eps=1e-5):
+    def __init__(self, emb_dim, eps=1e-3):
         super().__init__()
         self.eps = eps
         self.scale = nn.Parameter(torch.ones(emb_dim))
@@ -335,11 +335,7 @@ class ModelWrapper:
         Returns:
             torch.Tensor: Generated token IDs of shape (1, seq_len + max_generate_tokens).
         """
-        if isinstance(model, DDP):
-            cfg = model.module.cfg
-        else:
-            cfg = model.cfg
-        context_length = context_length or cfg["context_length"]
+        context_length = context_length or model.cfg["context_length"]
         max_generate_tokens = max_generate_tokens or context_length
         ids = ids.to(model.device)
 
