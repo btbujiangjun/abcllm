@@ -136,12 +136,12 @@ def train_worker(
             trainer.dump(f"{args.output_dir}/model_final_interrupted.pth")
 
 def for_server_conf(args, model_conf):
-    #args.train_data = "/disk6/data/pretrain/pretrain_train_data.bin"
-    args.train_data = "/disk6/data/baby_data/wudaocorpus_zh/wudaocorpus_zh_1.bin"
+    args.train_data = "/disk6/data/baby_data/baidubaike/baidubaike_563w_1.bin"
+    #args.train_data = "/disk6/data/baby_data/wudaocorpus_zh/wudaocorpus_zh_1.bin"
     args.val_data = "/disk6/data/pretrain/pretrain_val_data.bin"
     args.output_dir = "/disk6/data/baidubaike_checkpoints_multi_gpu"
-    args.print_sample_iter = 50
-    args.eval_freq = 10
+    args.print_sample_iter = 250
+    args.eval_freq = 50
     args.save_ckpt_freq = 1000
     args.batch_size = 4
     model_conf["context_length"] = 768
