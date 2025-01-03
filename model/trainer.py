@@ -186,6 +186,7 @@ class Trainer():
                             f"Tokens seen:{tokens_seen}/{total_tokens}, Speed:{speed:.2f}K tokens/sec, "
                             f"LR:{self.model.optimizer.param_groups[0]['lr']:.8f}, "
                             f"Loss(Total/Local/Val): {train_loss:.3f}/{local_loss:.3f}/{val_loss:.3f}"
+                            , flush=True
                         )
 
                         train_losses.append(train_loss)
@@ -208,7 +209,7 @@ class Trainer():
                             top_k, 
                             eos_id
                         )
-                        print(f"Rank {self.rank} Generated sample:\n{response}")
+                        print(f"Rank {self.rank} Generated sample:\n{response}", flush=True)
             self.num_epochs += 1
 
         if rank == 0:
@@ -291,7 +292,7 @@ class Trainer():
             ,"optimizer_state_dict": self.model.optimizer.state_dict()
             }, ckpt
         )
-        print(f"Dumped checkpoint {ckpt} successfully.")
+        print(f"Dumped checkpoint {ckpt} successfully.", flush=True)
 
     def load(self, ckpt:str):
         checkpoint = torch.load(ckpt, weights_only=False, map_location="cpu")
@@ -308,7 +309,7 @@ class Trainer():
                 if name in checkpoint["model_state_dict"]:
                     param.copy_(checkpoint["model_state_dict"][name].to(param.dtype)).to(device)
                 else:
-                    print(f"Rank {self.rank} Warning: {name} not found in state_dict.")
+                    print(f"Rank {self.rank} Warning: {name} not found in state_dict.", flush=True)
         self.model.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         
-        print(f"Rank {self.rank} Loaded checkpoint {ckpt} with {self.num_epochs} epochs and step {self.global_step}.")
+        print(f"Rank {self.rank} Loaded checkpoint {ckpt} with {self.num_epochs} epochs and step {self.global_step}.", flush=True)
