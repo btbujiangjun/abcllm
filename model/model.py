@@ -93,7 +93,7 @@ class GPTModel(nn.Module):
             weight_decay=cfg["decay"]
         )
 
-        print(f"Initialized model with configuration:{cfg}")
+        print(f"Initialized model with configuration:{cfg}", flush=True)
     
     @property
     def cfg(self):

@@ -190,4 +190,4 @@ if __name__ == "__main__":
     else:
         train_worker(0, 1, args, model_cfg, False)
 
-    print(f"Maximum GPU memory allocated: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")
+    print(f"Maximum GPU memory allocated: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB", flush=True)

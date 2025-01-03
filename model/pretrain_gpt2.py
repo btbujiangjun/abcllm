@@ -100,7 +100,7 @@ class PretrainGPT2:
         model.to(dtype).to(self.BASE_CONFIG["device"])
         model.reset_optimizer()
 
-        print(f"Loaded GPT2 tf_ckpt: {ckpt_dir}.")
+        print(f"Loaded GPT2 tf_ckpt: {ckpt_dir}.", flush=True)
 
         return model
 
@@ -148,7 +148,7 @@ class PretrainGPT2:
                 if os.path.exists(destination):
                     file_size_local = os.path.getsize(destination)
                     if file_size_local == file_size:
-                        print(f"File already exists and is up-to-date:{destination}")
+                        print(f"File already exists and is up-to-date:{destination}", flush=True)
                         return
 
                 block_size = 1024 
@@ -162,11 +162,10 @@ class PretrainGPT2:
                             file.write(chunk)
                             progress_bar.update(len(chunk))  # Update progress bar
         except urllib.error.HTTPError:
-            s = (
+            print(
                 f"The specified URL ({url}) is incorrect, the internet connection cannot be established,"
                 "\nor the requested file is temporarily unavailable.\nPlease visit the following website"
-                " for help: https://github.com/rasbt/LLMs-from-scratch/discussions/273")
-            print(s)
+                " for help: https://github.com/rasbt/LLMs-from-scratch/discussions/273", flush=True)
 
     def __load_tf_ckpt(self, ckpt_path, settings):
         params = {"blocks": [{} for _ in range(settings["n_layer"])]}
