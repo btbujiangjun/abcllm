@@ -43,7 +43,7 @@ def setup(rank, world_size):
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 def cleanup():
-    dist.destory_process_group()
+    dist.destroy_process_group()
 
 def train_worker(
         rank,
@@ -136,9 +136,10 @@ def train_worker(
             trainer.dump(f"{args.output_dir}/model_final_interrupted.pth")
 
 def for_server_conf(args, model_conf):
-    args.train_data = "/disk6/data/baby_data/baidubaike/baidubaike_563w_1.bin"
+    #args.train_data = "/disk6/data/baby_data/baidubaike/baidubaike_563w_train_0.bin"
+    args.train_data = "/disk6/data/baby_data/baidubaike/baidubaike_563w_train_1.bin"
     #args.train_data = "/disk6/data/baby_data/wudaocorpus_zh/wudaocorpus_zh_1.bin"
-    args.val_data = "/disk6/data/pretrain/pretrain_val_data.bin"
+    args.val_data = "/disk6/data/baby_data/baidubaike/baidubaike_563w_val.bin"
     args.output_dir = "/disk6/data/baidubaike_checkpoints_multi_gpu"
     args.print_sample_iter = 250
     args.eval_freq = 50
