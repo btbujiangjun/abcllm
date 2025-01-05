@@ -113,7 +113,7 @@ class GPTDataset(Dataset):
             raise IndexError(f"Index {idx} is out of bounds for dataset of size {len(self)}.") 
         
         start_index = idx * self.stride
-        end_index = start_index + self.max_length + 1
+        end_index = start_index + self.max_length + 1 #for target shift 1
         
         data_seq = np.asarray(self.token_ids[start_index : end_index], dtype=np.int32)
         padding_length = max(0, self.max_length + 1 - len(data_seq))
