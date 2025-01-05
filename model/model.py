@@ -27,6 +27,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 from attention.attention import MultiHeadAttention
+from module.position import AbsolutePositionEmbedding
 
 # Default configuration for a GPTModel
 GPT_CONFIG_124M = {
@@ -70,7 +71,7 @@ class GPTModel(nn.Module):
 
         # Embedding layers
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"]).to(device)
-        self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"]).to(device)
+        self.pos_emb = AbsolutePositionEmbedding(cfg["context_length"], cfg["emb_dim"]).to(device)
         self.drop_emb = nn.Dropout(cfg["drop_rate"]).to(device)
         
         # Transformer layers
@@ -152,7 +153,7 @@ class GPTModel(nn.Module):
 
         # Token and position embeddings
         tok_embeds = self.tok_emb(batch)
-        pos_embeds = self.pos_emb(torch.arange(seq_len, device=batch.device))
+        pos_embeds = self.pos_emb(tok_embeds)
         x = tok_embeds + pos_embeds
         x = self.drop_emb(x)
 
