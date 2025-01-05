@@ -28,6 +28,8 @@ import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 from attention.attention import MultiHeadAttention
 from module.position import AbsolutePositionEmbedding
+from module.activation import GELU
+from module.normalization import LayerNorm
 
 # Default configuration for a GPTModel
 GPT_CONFIG_124M = {
@@ -209,31 +211,6 @@ class TransformerBlock(nn.Module):
 
         return x
 
-class LayerNorm(nn.Module):
-    """
-    Custom Layer Normalization implementation.
-    """
-    def __init__(self, emb_dim, eps=1e-3):
-        super().__init__()
-        self.eps = eps
-        self.scale = nn.Parameter(torch.ones(emb_dim))
-        self.shift = nn.Parameter(torch.zeros(emb_dim))
-
-    def forward(self, x):
-        """
-        Normalize the input tensor.
-
-        Args:
-            x (torch.Tensor): Input tensor.
-
-        Returns:
-            torch.Tensor: Normalized tensor.
-        """
-        mean = x.mean(dim=-1, keepdim=True)
-        var = x.var(dim=-1, keepdim=True, unbiased=False)
-        norm_x = (x - mean) / torch.sqrt(var + self.eps)
-        return self.scale * norm_x + self.shift
-
 class FeedForward(nn.Module):
     """
     Feed-forward layer with GELU activation and dropout.
@@ -248,62 +225,6 @@ class FeedForward(nn.Module):
 
     def forward(self, x):
         return self.layers(x)
-
-class GELU(nn.Module):
-    """
-    Approximation of Gaussian Error Linear Unit (GELU) activation.
-    """
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x):
-        return 0.5 * x * (1 +
-            torch.tanh(
-                torch.sqrt(torch.tensor(2.0 / torch.pi))
-                * (x + 0.044715 * torch.pow(x, 3))
-            )
-        )
-
-class SiLU(nn.Module):
-    def __init__(self):
-        super(SiLU, self).__init__()
-
-    def forward(self, x):
-        return x * torch.sigmoid(x)
-
-class RMSNorm(nn.Module):
-    """
-    Root Mean Square Layer Normalization (RMSNorm).
-
-    This normalization method scales the input using the root mean square
-    (RMS) of the input features instead of directly normalizing to a
-    zero-mean, unit-variance distribution like traditional LayerNorm.
-
-    Args:
-        emb_dim (int): Dimension of the embedding.
-        eps (float): Small constant to avoid division by zero. Default: 1e-5.
-    """
-    def __init__(self, emb_dim, eps=1e-5):
-        super().__init__()
-        self.eps = eps
-        self.emb_dim = emb_dim
-        self.weight = nn.Parameter(torch.ones(emb_dim)).float()
-
-    def forward(self, x):
-        """
-        Forward pass for RMSNorm.
-
-        Args:
-            x (torch.Tensor): Input tensor of shape (..., emb_dim).
-
-        Returns:
-            torch.Tensor: Normalized tensor of the same shape as input.
-        """
-        # Compute the mean of squared elements along the last dimension
-        mean = x.pow(2).mean(dim=-1, keepdim=True)
-        x_normed = x * torch.rsqrt(means + self.eps)
-        # Normalize using RMS and apply the learned scale
-        return (x_normed * self.weight).to(dtype=x.dtype)
 
 class ModelWrapper:
     """

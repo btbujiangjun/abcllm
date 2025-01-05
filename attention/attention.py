@@ -4,22 +4,9 @@ attention.py
 
 Key modules for LLM tasks including SelfAttention, CausalAttention, and MultiHeadAttention.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 Author: JiangJun
 Date: 2024-12-16
 """
-
 
 
 import torch
@@ -30,7 +17,7 @@ class SelfAttention(nn.Module):
     Implements single-head self-attention mechanism.
     """
 
-    def __init__(self, d_in, d_out, qkv_bias=False):
+    def __init__(self, d_in: int, d_out :int, qkv_bias=False):
         """
         Initialize layers for query, key, and value projections.
 
@@ -44,7 +31,7 @@ class SelfAttention(nn.Module):
         self.w_key = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.w_value = nn.Linear(d_in, d_out, bias=qkv_bias)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) ->torch.Tensor:
         """
         Forward pass for self-attention.
 
@@ -58,14 +45,13 @@ class SelfAttention(nn.Module):
         keys = self.w_key(x)
         values = self.w_value(x)
 
-        attn_scores = queries @ keys.T
-
+        attn_scores = torch.matmul(queries, keys.transponse(-2, -1))
         attn_weights = torch.softmax(
             attn_scores / keys.shape[-1] ** 0.5,
             dim=-1
         )
 
-        return attn_weights @ values
+        return torch.matmul(attn_weights, values)
 
 class CausalAttention(nn.Module):
     """
@@ -73,10 +59,10 @@ class CausalAttention(nn.Module):
     """
 
     def __init__(self
-            ,d_in
-            ,d_out
-            ,context_length
-            ,dropout
+            ,d_in: int
+            ,d_out: int
+            ,context_length: int
+            ,dropout: float
             ,qkv_bias=False):
         """
         Initialize layers for query, key, and value projections, and the causal mask.
@@ -99,7 +85,7 @@ class CausalAttention(nn.Module):
             ,torch.triu(torch.ones(context_length, context_length), diagonal=1)
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass for causal attention.
 
@@ -115,7 +101,7 @@ class CausalAttention(nn.Module):
         values = self.w_value(x)
 
         #(batch, n_tokens, dim_in) -> (batch, dim_in, n_tokens)
-        attn_scores = queries @ keys.transpose(1, 2) 
+        attn_scores = torch.matmul(queries, keys.transpose(-2, -1)) 
         attn_scores.masked_fill_(
             self.mask.bool()[:n_tokens, :n_tokens]
             ,-torch.inf
@@ -127,10 +113,10 @@ class CausalAttention(nn.Module):
         )
         attn_weights = self.dropout(attn_weights)
 
-        return attn_weights @ values
+        return torch.matmul(attn_weights, values)
 
 
-class  MultiHeadAttention(nn.Module):
+class MultiHeadAttention(nn.Module):
     """
     Implements multi-head attention mechanism with causal masking.
     """
@@ -171,7 +157,6 @@ class  MultiHeadAttention(nn.Module):
 
     def forward(self, x):
         batch_size, n_tokens, d_in = x.shape
-
         queries = self.w_query(x)
         keys = self.w_key(x)
         values = self.w_value(x)
@@ -200,10 +185,9 @@ class  MultiHeadAttention(nn.Module):
         attn_weights = self.dropout(attn_weights)
 
         #shape:(batch_size, n_tokens, num_heads, head_dim)
-        context_vec = (attn_weights @ values).transpose(1, 2)
-        context_vec = context_vec.contiguous().view(batch_size, n_tokens, self.d_out)
+        context = torch.matmul(attn_weights, values).transpose(1, 2).reshape(batch_size, n_tokens, -1)
 
-        return self.out_proj(context_vec)
+        return self.out_proj(context)
 
 
 
