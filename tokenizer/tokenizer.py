@@ -35,15 +35,14 @@ class SimpleTokenizer:
             eot (str): End-of-text token (default: "<|endoftext|>").
             unk (str): Unknown token (default: "<|unk|>").
         """
-        words = sorted(set(words))
-        words.extend([unk, eot])
-        vocab = {token:integer for integer, token in enumerate(words)}
-
-        self.str_to_int = vocab
-        self.int_to_str = {i:s for s, i in vocab.items()}
         self.eot: str = eot
         self.unk: str = unk
-        self.vocab_size: int = len(vocab)
+        
+        words = sorted(set(words))
+        words.extend([unk, eot])
+
+        self.str_to_int = {token:integer for integer, token in enumerate(words)}
+        self.int_to_str = {i:s for s, i in self.str_to_int.items()}
 
     @classmethod
     def from_file(cls,
@@ -95,14 +94,16 @@ class SimpleTokenizer:
             ids (List[int]): List of token IDs to decode.
         """
         text = " ".join(self.int_to_str[i] for i in ids)
-        text = re.sub(self.sub_re, r'\1', text)# Remove unnecessary spaces
-
-        return text
+        return re.sub(self.sub_re, r'\1', text)# Remove unnecessary spaces
 
     @property
     def eos_id(self):
         """Get the ID of the end-of-text token."""
-        return self.str_to_int["<|endoftext|>"]
+        return self.str_to_int[self.eot]
+    
+    @property
+    def vocab_size(self) -> int:
+        return len(self.int_to_str)
 
 class GPT2Tokenizer:
     """
@@ -136,6 +137,10 @@ class GPT2Tokenizer:
         """Get the ID of the end-of-text token."""
         return self.tokenizer.n_vocab - 1
 
+    @property
+    def vocab_size(self) -> int:
+        return self.tokenizer.n_vocab
+
 class SPTokenizer:
     """
     SentencePiece tokenizer wrapper for encoding and decoding.
@@ -149,10 +154,6 @@ class SPTokenizer:
         """
         assert os.path.isfile(model_file), f"Model file not found: {model_file}."
         self.model = SentencePieceProcessor(model_file)
-
-        self.bos_id: int = self.model.bos_id()
-        self.eos_id: int = self.model.eos_id()
-        self.vocab_size: int = self.model.vocab_size()
         
     def encode(self, text: str, allowed_special={}, bos: bool = False, eos: bool = False) ->List[int]:
         """
@@ -168,9 +169,9 @@ class SPTokenizer:
 
         ids = self.model.encode(text)
         if bos:
-            ids = [self.bos_id] + ids
+            ids = [self.model.bos_id()] + ids
         if eos:
-            ids = ids + [self.eos_id]
+            ids = ids + [self.model.eos_id()]
 
         return ids
 
@@ -183,3 +184,6 @@ class SPTokenizer:
         """
         return self.model.decode(ids)
 
+    @property
+    def vocab_size(self) -> int:
+        return self.model.vocab_size()
