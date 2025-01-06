@@ -68,14 +68,7 @@ class SimpleTokenizer:
 
         return cls(words, eot, unk)
 
-    def encode(self, text: str, allowed_special={"<|endoftext|>"}) -> List[int]:
-        """
-        Encode a string into a list of token IDs.
-
-        Args:
-            text (str): The input text.
-            allowed_special (set): Special tokens allowed in the text (default: {"<|endoftext|>"}).
-        """
+    def encode(self, text: str) -> List[int]:
         assert isinstance(text, str), "Input text must be a string."
         words = re.split(self.split_re, text)
         words = [item.strip() for item in words if item.strip()]
@@ -87,12 +80,6 @@ class SimpleTokenizer:
         return ids
 
     def decode(self, ids: List[int]) -> str:
-        """
-        Decode a list of token IDs into a string.
-
-        Args:
-            ids (List[int]): List of token IDs to decode.
-        """
         text = " ".join(self.int_to_str[i] for i in ids)
         return re.sub(self.sub_re, r'\1', text)# Remove unnecessary spaces
 
@@ -110,26 +97,12 @@ class GPT2Tokenizer:
     Wrapper for the GPT-2 tokenizer provided by tiktoken.
     """
     def __init__(self):
-        """Initialize the GPT2Tokenizer."""
         self.tokenizer = tiktoken.get_encoding("gpt2")
 
-    def encode(self, text: str, allowed_special={"<|endoftext|>"}) -> List[int]:
-        """
-        Encode text into token IDs using GPT-2's tokenizer.
-
-        Args:
-            text (str): The input text.
-            allowed_special (set): Allowed special tokens.
-        """
-        return self.tokenizer.encode(text, allowed_special=allowed_special)
+    def encode(self, text: str) -> List[int]:
+        return self.tokenizer.encode(text, allowed_special={"<|endoftext|>"})
 
     def decode(self, ids: List[int]) ->str:
-        """
-        Decode token IDs into text using GPT-2's tokenizer.
-
-        Args:
-            ids (List[int]): List of token IDs to decode.
-        """
         return self.tokenizer.decode(ids)
 
     @property
@@ -146,22 +119,15 @@ class SPTokenizer:
     SentencePiece tokenizer wrapper for encoding and decoding.
     """
     def __init__(self, model_file: str):
-        """
-        Initialize the SPTokenizer with a SentencePiece model file.
-
-        Args:
-            model_file (str): Path to the SentencePiece model file.
-        """
         assert os.path.isfile(model_file), f"Model file not found: {model_file}."
         self.model = SentencePieceProcessor(model_file)
         
-    def encode(self, text: str, allowed_special={}, bos: bool = False, eos: bool = False) ->List[int]:
+    def encode(self, text: str, bos: bool = False, eos: bool = False) ->List[int]:
         """
         Encode text into token IDs using SentencePiece.
 
         Args:
             text (str): The input text.
-            allowed_special (set): Allowed special tokens.
             bos (bool): Whether to prepend the beginning-of-sequence token.
             eos (bool): Whether to append the end-of-sequence token.
         """
@@ -176,13 +142,12 @@ class SPTokenizer:
         return ids
 
     def decode(self, ids: List[int]) -> str:
-        """
-        Decode token IDs into text using SentencePiece.
-
-        Args:
-            ids (List[int]): List of token IDs to decode.
-        """
         return self.model.decode(ids)
+
+    @property
+    def eos_id(self) -> int:
+        """Get the ID of the end-of-text token."""
+        return self.model.eos_id()
 
     @property
     def vocab_size(self) -> int:

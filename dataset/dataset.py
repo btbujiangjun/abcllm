@@ -49,8 +49,7 @@ class GPTDataset(Dataset):
             ,tokenizer
             ,max_length=256
             ,stride=1):
-        token_ids = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
-        return cls(token_ids, max_length, stride, tokenizer.eos_id)
+        return cls(tokenizer.encode(text), max_length, stride, tokenizer.eos_id)
 
     @classmethod
     def from_files(cls
