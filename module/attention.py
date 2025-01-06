@@ -45,7 +45,7 @@ class SelfAttention(nn.Module):
         keys = self.w_key(x)
         values = self.w_value(x)
 
-        attn_scores = torch.matmul(queries, keys.transponse(-2, -1))
+        attn_scores = torch.matmul(queries, keys.transpose(-2, -1))
         attn_weights = torch.softmax(
             attn_scores / keys.shape[-1] ** 0.5,
             dim=-1
@@ -121,11 +121,11 @@ class MultiHeadAttention(nn.Module):
     Implements multi-head attention mechanism with causal masking.
     """
     def __init__(self
-            ,d_in
-            ,d_out
-            ,context_length
-            ,dropout
-            ,num_heads
+            ,d_in: int
+            ,d_out: int
+            ,context_length: int
+            ,dropout: float
+            ,num_heads: int
             ,qkv_bias=False):
         """
         Initialize multi-head attention layers and causal mask.
@@ -155,8 +155,8 @@ class MultiHeadAttention(nn.Module):
             ,torch.triu(torch.ones(context_length, context_length), diagonal=1)
         )
 
-    def forward(self, x):
-        batch_size, n_tokens, d_in = x.shape
+    def forward(self, x: torch.Tensor) ->torch.Tensor:
+        batch_size, n_tokens, _ = x.shape
         queries = self.w_query(x)
         keys = self.w_key(x)
         values = self.w_value(x)
@@ -174,7 +174,7 @@ class MultiHeadAttention(nn.Module):
         values = values.transpose(1, 2)
 
         #scaled dot-product attention with a causal mask
-        attn_scores = queries @ keys.transpose(2, 3) # dot prodcut for each head
+        attn_scores = torch.matmul(queries, keys.transpose(-2, -1)) # dot prodcut for each head
 
         #original mask truncated to the number of tokens and convert to boolean
         mask_bool = self.mask.bool()[:n_tokens, :n_tokens]

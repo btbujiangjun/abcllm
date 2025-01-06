@@ -26,8 +26,8 @@ import copy
 import torch
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
-from attention.attention import MultiHeadAttention
 from module.position import AbsolutePositionEmbedding
+from module.attention import MultiHeadAttention
 from module.activation import GELU
 from module.normalization import LayerNorm
 
