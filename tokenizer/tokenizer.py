@@ -118,9 +118,9 @@ class SPTokenizer:
     """
     SentencePiece tokenizer wrapper for encoding and decoding.
     """
-    def __init__(self, model_file: str):
-        assert os.path.isfile(model_file), f"Model file not found: {model_file}."
-        self.model = SentencePieceProcessor(model_file)
+    def __init__(self, tokenizer_file: str):
+        assert os.path.isfile(tokenizer_file), f"The tokenizer file not found: {tokenizer_file}."
+        self.tokenizer = SentencePieceProcessor(tokenizer_file)
         
     def encode(self, text: str, bos: bool = False, eos: bool = False) ->List[int]:
         """
@@ -133,22 +133,22 @@ class SPTokenizer:
         """
         assert isinstance(text, str), "Input text must be a string."
 
-        ids = self.model.encode(text)
+        ids = self.tokenizer.encode(text)
         if bos:
-            ids = [self.model.bos_id()] + ids
+            ids = [self.tokenizer.bos_id()] + ids
         if eos:
-            ids = ids + [self.model.eos_id()]
+            ids = ids + [self.tokenizer.eos_id()]
 
         return ids
 
     def decode(self, ids: List[int]) -> str:
-        return self.model.decode(ids)
+        return self.tokenizer.decode(ids)
 
     @property
     def eos_id(self) -> int:
         """Get the ID of the end-of-text token."""
-        return self.model.eos_id()
+        return self.tokenizer.eos_id()
 
     @property
     def vocab_size(self) -> int:
-        return self.model.vocab_size()
+        return self.tokenizer.vocab_size()
