@@ -35,7 +35,7 @@ def plot_losses(epochs_seen, tokens_seen, train_losses, local_losses, val_losses
     ax2.set_xlabel("Tokens seen")
 
     fig.tight_layout()  # Adjust layout to make room
-    plt.savefig(output_dir / "losses.pdf")
+    plt.savefig(f"{output_dir}/losses.pdf")
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
