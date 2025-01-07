@@ -22,7 +22,7 @@ class ABCModel(ABC, torch.nn.Module):
 
     @property
     def name(self):
-        return f"{self._name}[{self._version}]"
+        return f"{self._name} {self._version}({self.param_size})"
 
     @property
     def cfg(self):
@@ -63,7 +63,7 @@ class ABCModel(ABC, torch.nn.Module):
         )
 
     @abstractmethod
-    def forward(self, batch: torch.Tensor)->torch.Tensor:
+    def forward(self, x: torch.Tensor)->torch.Tensor:
         pass
 
 

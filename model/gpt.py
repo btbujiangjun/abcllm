@@ -57,18 +57,16 @@ class GPTModel(ABCModel):
         self._name = "gpt2"
         self._version = "1.0"
 
-        vocab_size, emb_dim = cfg["vocab_size"], cfg["emb_dim"]
-        context_length, drop_rate = cfg["context_length"], cfg["drop_rate"]
-        layers, device = cfg["n_layers"], cfg["device"]
+        vocab_size, emb_dim, device = cfg["vocab_size"], cfg["emb_dim"], cfg["device"]
 
         # Embedding layers
         self.tok_emb = nn.Embedding(vocab_size, emb_dim).to(device)
-        self.pos_emb = AbsolutePositionEmbedding(context_length, emb_dim).to(device)
-        self.drop_emb = nn.Dropout(drop_rate).to(device)
+        self.pos_emb = AbsolutePositionEmbedding(cfg["context_length"], emb_dim).to(device)
+        self.drop_emb = nn.Dropout(cfg["drop_rate"]).to(device)
         
         # Transformer layers
         self.trf_blocks = nn.Sequential(
-            *[TransformerBlock(cfg) for _ in range(layers)]
+            *[TransformerBlock(cfg) for _ in range(cfg["n_layers"])]
         ).to(device)
         
         # Final layers
@@ -79,27 +77,16 @@ class GPTModel(ABCModel):
         self.reset_optimizer()
         print(f"Initialized {self.name} with configuration:{cfg}", flush=True)
 
-    def forward(self, batch: torch.Tensor)->torch.Tensor:
-        """
-        Forward pass of the GPT model.
-
-        Args:
-            batch (torch.Tensor): Input token IDs of shape (batch_size, seq_len).
-
-        Returns:
-            torch.Tensor: Logits of shape (batch_size, seq_len, vocab_size).
-        """
-        batch = batch.to(self.device)
+    def forward(self, x: torch.Tensor)->torch.Tensor:
+        x = x.to(self.device)
 
         # Token and position embeddings
-        tok_embeds = self.tok_emb(batch)
+        tok_embeds = self.tok_emb(x)
         pos_embeds = self.pos_emb(tok_embeds)
         x = tok_embeds + pos_embeds
         x = self.drop_emb(x)
 
-        # Transformer blocks
         x = self.trf_blocks(x)
-        # Output
         x = self.final_norm(x)
         return self.out_head(x)
 
@@ -110,35 +97,27 @@ class TransformerBlock(nn.Module):
     """
     def __init__(self, cfg):
         super().__init__()
+        emb_dim = cfg["emb_dim"]
         self.multi_attention = MultiHeadAttention(
-            d_in = cfg["emb_dim"],
-            d_out = cfg["emb_dim"],
+            d_in = emb_dim,
+            d_out = emb_dim,
             context_length = cfg["context_length"],
             num_heads = cfg["n_heads"],
             dropout = cfg["drop_rate"],
             qkv_bias = cfg["qkv_bias"]
         )
-        self.ff = FeedForward(cfg)
-        self.norm1 = LayerNorm(cfg["emb_dim"])
-        self.norm2 = LayerNorm(cfg["emb_dim"])
+        self.ff = FeedForward(emb_dim)
+        self.norm1 = LayerNorm(emb_dim)
+        self.norm2 = LayerNorm(emb_dim)
         self.dropout = nn.Dropout(cfg["drop_rate"])
 
-    def forward(self, x):
-        """
-        Forward pass through a transformer block.
-
-        Args:
-            x (torch.Tensor): Input tensor of shape (batch_size, seq_len, emb_dim).
-
-        Returns:
-            torch.Tensor: Output tensor of the same shape as input.
-        """
+    def forward(self, x: torch.Tensor)->torch.Tensor:
         # Multi-head attention + residual connection
         short_cut = x
         x = self.norm1(x)
         x = self.multi_attention(x)
         x = self.dropout(x)
-        x = x + short_cut
+        x = x + short_cut #residual connection
 
         # Feed-forward network + residual connection
         short_cut = x
@@ -153,15 +132,15 @@ class FeedForward(nn.Module):
     """
     Feed-forward layer with GELU activation and dropout.
     """
-    def __init__(self, cfg):
+    def __init__(self, emb_dim: int):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(cfg["emb_dim"], 4 * cfg["emb_dim"])
+            nn.Linear(emb_dim, 4 * emb_dim)
             ,GELU()
-            ,nn.Linear(4 * cfg["emb_dim"], cfg["emb_dim"])
+            ,nn.Linear(4 * emb_dim, emb_dim)
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor)->torch.Tensor:
         return self.layers(x)
 
 class ModelWrapper:
