@@ -14,7 +14,7 @@ from matplotlib.ticker import MaxNLocator
 
 from tokenizer.tokenizer import SPTokenizer
 from dataset.dataset import GPTDataset, ABCDataLoader, GPTDataLoader
-from model.model import GPT_CONFIG_124M, GPTModel, ModelWrapper
+from model.gpt import GPT_CONFIG_124M, GPTModel, ModelWrapper
 from model.trainer import Trainer, LinearWarmupLinearDecayScheduler
 
 def plot_losses(epochs_seen, tokens_seen, train_losses, local_losses, val_losses, output_dir):

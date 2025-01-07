@@ -11,6 +11,7 @@ Date: 2024-12-16
 
 import torch
 import torch.nn as nn
+from module.position import RotaryPositionEmbedding
 
 class SelfAttention(nn.Module):
     """
@@ -188,6 +189,70 @@ class MultiHeadAttention(nn.Module):
         context = torch.matmul(attn_weights, values).transpose(1, 2).reshape(batch_size, n_tokens, -1)
 
         return self.out_proj(context)
+
+class GroupedQueryAttention(nn.Module):
+    def __init__(self, 
+            d_in: int,
+            d_out: int,
+            context_length: int,
+            num_heads: int,
+            num_kv_groups: int,
+            rope_base=10_000
+        ):
+        super().__init__()
+        assert d_out % num_heads == 0, f"d_out must be divisible by num_heads."
+        assert num_heads % num_kv_groups == 0, "num_heads must be divisible by num_kv_groups."
+
+        self.d_out = d_out
+        self.num_heads = num_heads
+        self.head_dim = d_out // num_heads
+        self.num_kv_groups = num_kv_groups
+        self.group_size = num_heads // num_kv_groups
+
+        self.w_query = nn.Linear(d_in, d_out, bias=False)
+        self.w_key = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False)
+        self.w_value = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False)
+        self.out_proj = nn.Linear(d_out, d_out, bias=False)
+
+        mask = torch.triu(torch.ones(context_length, context_length), diagonal=1)
+        self.register_buffer("mask", mask)
+
+        self.position_embedding = RotaryPositionEmbedding(context_length, self.head_dim)
+
+    def forward(self, x: torch.Tensor) ->torch.Tensor:
+        batch_size, num_tokens, d_in = x.shape
+        
+        queries = self.w_query(x) #(batch_size, num_tokens, d_out)
+        keys = self.w_key(x) #(batch_size, num_tokens, num_kv_groups * head_dim)
+        values = self.w_value(x) #(batch_size, num_tokens, num_kv_groups * head_dim)
+
+        #Reshape queries/keys/values
+        queries = queries.view(batch_size, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        keys = keys.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        values = values.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+
+        #Position embedding
+        keys = position_embedding(keys)
+        queries = position_embedding(queries)
+
+        #expand keys and values to match the number of heads
+        keys = keys.repeat_interleave(self.group_size, dim=1) #(batch_size, num_heads, num_tokens, head_dim)
+        values = values.repeat_interleave(self.group_size, dim=1) #(batch_size, num_heads, num_tokens, head_dim)
+        #Compute scaled dot-product attention with a causal mask
+        # (batch_size, num_heads, num_tokens, num_tokens)
+        attn_scores = torch.matmul(queries, keys.transpose(-2, -1)) #Dot product for each head
+        #Original mask truncated to the number of tokens and converted to boolean
+        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        attn_scores.masked_fill_(mask_bool, -torch.inf)
+        attn_weight = torch.softmax(attn_scores /keys.shape[-1] ** 0.5, dim=-1)
+
+        #???
+        assert keys.shape[-1] == self.head_dim
+
+        # (batch_size, num_tokens, num_heads, head_dim)
+        context = torch.matmul(attn_weights, values).transpose(-2, -1).reshape(batch_size, num_tokens, self.d_out)
+        return self.out_proj(context)
+
 
 
 

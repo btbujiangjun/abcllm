@@ -3,8 +3,8 @@ import torch
 
 from dataset.dataset import GPTDataset, GPTDataLoader
 from tokenizer.tokenizer import GPT2Tokenizer
-from attention.attention import MultiHeadAttention
-from model.model import GPTModel, GPT_CONFIG_124M, ModelWrapper
+from module.attention import MultiHeadAttention
+from model.gpt import GPTModel, GPT_CONFIG_124M, ModelWrapper
 from model.trainer import Trainer
 from model.pretrain_gpt2 import PretrainGPT2
 

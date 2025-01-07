@@ -26,7 +26,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torch.nn.parallel import DistributedDataParallel as DDP
-from model.model import GPTModel, CONFIG_OPERATION, ModelWrapper
+from model.gpt import GPTModel, CONFIG_OPERATION, ModelWrapper
 
 class LinearWarmupLinearDecayScheduler(torch.optim.lr_scheduler._LRScheduler):
     def __init__(self, optimizer, warmup_steps, total_steps, last_epoch=-1):

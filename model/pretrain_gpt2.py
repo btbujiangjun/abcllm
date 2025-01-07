@@ -11,7 +11,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf 
-from model.model import GPTModel, GPT_CONFIG_124M
+from model.gpt import GPTModel, GPT_CONFIG_124M
 
 class PretrainGPT2:
     def __init__(self):

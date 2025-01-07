@@ -5,18 +5,6 @@ gpt_model.py
 Implementation of a GPT-based model including transformer blocks, attention mechanisms, and 
 feed-forward networks. This script supports model creation, training, and text generation.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 Author: JiangJun
 Date: 2024-12-16
 """
@@ -30,6 +18,7 @@ from module.position import AbsolutePositionEmbedding
 from module.attention import MultiHeadAttention
 from module.activation import GELU
 from module.normalization import LayerNorm
+from model.abcmodel import ABCModel
 
 # Default configuration for a GPTModel
 GPT_CONFIG_124M = {
@@ -58,89 +47,39 @@ def CONFIG_OPERATION(CONFIG):
             del config[item]
     return config
 
-class GPTModel(nn.Module):
+class GPTModel(ABCModel):
     """
     GPTModel defines a GPT-based transformer with embeddings, transformer layers,
     and output head for generating logits.
     """
     def __init__(self, cfg):
-        super().__init__()
-        self._cfg = None
-        self.cfg = cfg
-        device = cfg["device"]
+        super().__init__(cfg)
+        self._name = "gpt2"
+        self._version = "1.0"
 
-        self.pre_x = None
+        vocab_size, emb_dim = cfg["vocab_size"], cfg["emb_dim"]
+        context_length, drop_rate = cfg["context_length"], cfg["drop_rate"]
+        layers, device = cfg["n_layers"], cfg["device"]
 
         # Embedding layers
-        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"]).to(device)
-        self.pos_emb = AbsolutePositionEmbedding(cfg["context_length"], cfg["emb_dim"]).to(device)
-        self.drop_emb = nn.Dropout(cfg["drop_rate"]).to(device)
+        self.tok_emb = nn.Embedding(vocab_size, emb_dim).to(device)
+        self.pos_emb = AbsolutePositionEmbedding(context_length, emb_dim).to(device)
+        self.drop_emb = nn.Dropout(drop_rate).to(device)
         
         # Transformer layers
         self.trf_blocks = nn.Sequential(
-            *[TransformerBlock(cfg) for _ in range(cfg["n_layers"])]
+            *[TransformerBlock(cfg) for _ in range(layers)]
         ).to(device)
         
         # Final layers
-        self.final_norm = LayerNorm(cfg["emb_dim"]).to(device)
-        self.out_head = nn.Linear(
-            cfg["emb_dim"], 
-            cfg["vocab_size"], 
-            bias=False
-        ).to(device)
+        self.final_norm = LayerNorm(emb_dim).to(device)
+        self.out_head = nn.Linear(emb_dim, vocab_size, bias=False).to(device)
 
         # Optimizer
-        self.optimizer = torch.optim.AdamW(
-            self.parameters(), 
-            lr=cfg["lr"], 
-            weight_decay=cfg["decay"]
-        )
+        self.reset_optimizer()
+        print(f"Initialized {self.name} with configuration:{cfg}", flush=True)
 
-        print(f"Initialized model with configuration:{cfg}", flush=True)
-    
-    @property
-    def cfg(self):
-        if isinstance(self, DDP):
-            return self.module._cfg
-        else:
-            return self._cfg
- 
-    @cfg.setter
-    def cfg(self, value):
-        if isinstance(self, DDP):
-            self.module._cfg = value
-        else:
-            self._cfg = value
-
-    def reset_optimizer(self):
-        """Reset the optimizer with the current configuration."""
-        self.optimizer = torch.optim.AdamW(
-            self.parameters()
-            ,lr=self.cfg["lr"]
-            ,weight_decay=self.cfg["decay"]
-        )
-
-    @property        
-    def device(self)->str:
-        """Return the device on which the model resides."""
-        return next(self.parameters()).device
-
-    @property
-    def param_size(self)->int:
-        """Calculate the total number of parameters in the model."""
-        return sum(p.numel() for p in self.parameters())
-
-    @property
-    def size_byte(self)->float:
-        """Calculate the size of the model."""
-        return sum(p.numel() * torch.tensor([], dtype=p.dtype).element_size() for p in self.parameters())
-
-    @property
-    def size_mb(self)->float:
-        """Calculate the size of the model in megabytes."""
-        return f"{self.size_byte / (1024 * 1024):.2f}"
-
-    def forward(self, batch):
+    def forward(self, batch: torch.Tensor)->torch.Tensor:
         """
         Forward pass of the GPT model.
 
@@ -150,7 +89,6 @@ class GPTModel(nn.Module):
         Returns:
             torch.Tensor: Logits of shape (batch_size, seq_len, vocab_size).
         """
-        batch_size, seq_len = batch.shape
         batch = batch.to(self.device)
 
         # Token and position embeddings

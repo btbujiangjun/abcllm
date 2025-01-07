@@ -5,7 +5,6 @@
 #
 
 import torch
-from model.model import GPTModel
 from model.trainer import Trainer
 
 class ClassifierFinetune(Trainer):
