@@ -83,7 +83,7 @@ def train_worker(
         stride=model_cfg["context_length"]
     )
 
-    model = GPTModel(model_cfg)
+    model = Llama3Model(model_cfg)
     if is_distributed:
         model = DDP(model, device_ids=[rank])
     trainer = Trainer(model, tokenizer, rank=rank)
@@ -179,7 +179,7 @@ if __name__ == "__main__":
                         help='restrict the sampled tokens to the top-k most likely tokens')
 
     args = parser.parse_args()
-    model_cfg = GPT_CONFIG_124M
+    model_cfg = LLAMA32_CONFIG
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
