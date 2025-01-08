@@ -32,13 +32,13 @@ class PretrainGPT2:
     def load_tf_ckpt(self, choose_model, ckpt_dir, dtype=torch.bfloat16):
         
         model, model_size = self.init_model(choose_model)
-        params = self.__load_params(ckpt_dir, model_size)
-        self._assign(model.pos_emb.weight, params['wpe'])
+        params = self._load_params(ckpt_dir, model_size)
+
         self._assign(model.tok_emb.weight, params['wte'])
+        self._assign(model.pos_emb.weight, params['wpe'])
 
         for b in range(len(params["blocks"])):
-            q_w, k_w, v_w = np.split(
-                (params["blocks"][b]["attn"]["c_attn"])["w"], 3, axis=-1)
+            q_w, k_w, v_w = np.split((params["blocks"][b]["attn"]["c_attn"])["w"], 3, axis=-1)
             self._assign(model.trf_blocks[b].multi_attention.w_query.weight, q_w.T)
             self._assign(model.trf_blocks[b].multi_attention.w_key.weight, k_w.T)
             self._assign(model.trf_blocks[b].multi_attention.w_value.weight, v_w.T)
@@ -95,6 +95,7 @@ class PretrainGPT2:
 
         self._assign(model.final_norm.scale, params["g"])
         self._assign(model.final_norm.shift, params["b"])
+        #与输入嵌入层共享权重,均为(vocab_size, hidden_size),以减少参数量
         self._assign(model.out_head.weight, params["wte"])
         
         model.to(dtype).to(self.BASE_CONFIG["device"])
@@ -115,7 +116,7 @@ class PretrainGPT2:
         
         return model, model_size
     
-    def __load_params(self, ckpt_dir, model_size):
+    def _load_params(self, ckpt_dir, model_size):
         allowed_sizes = ("124M", "355M", "774M", "1558M")
         if model_size not in allowed_sizes:
             raise ValueError(f"Model size not in {allowed_sizes}")
@@ -132,7 +133,7 @@ class PretrainGPT2:
         for file in files:
             file_url = os.path.join(base_url, model_size, file)
             file_path = os.path.join(ckpt_dir, file)
-            self.__download(file_url, file_path)
+            self._download(file_url, file_path)
 
         tf_ckpt_path = tf.train.latest_checkpoint(ckpt_dir)
         settings = json.load(open(os.path.join(ckpt_dir, "hparams.json")))
@@ -140,7 +141,7 @@ class PretrainGPT2:
 
         return params
 
-    def __download(self, url, destination):
+    def _download(self, url, destination):
         try:
             with urllib.request.urlopen(url) as response:
                 file_size = int(response.headers.get("Content-Length", 0))
