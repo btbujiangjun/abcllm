@@ -1,10 +1,8 @@
 import os
 import sys
 import torch
-from torch.utils.data import Dataset, DataLoader
-
-from dataset.dataset import GPTDataset, ABCDataLoader, LabeledDataset
-from tokenizer.tokenizer import GPT2Tokenizer, SimpleTokenizer
+from dataset.dataset import ABCDataLoader, LabeledDataset
+from tokenizer.tokenizer import GPT2Tokenizer
 from model.pretrain_gpt2 import PretrainGPT2
 from finetune.classifier import ClassifierFinetune
 
@@ -70,10 +68,10 @@ finetune.train(
     eval_freq=1,
     eval_iter=1,
     start_context=text,
-    max_generate_tokens=train_dataset.max_length
+    max_length=train_dataset.max_length
 )
 
-ckpt="./data/tmp/finetune/spam_finetune.ckpt"
+ckpt="./data/tmp/finetune/spam_finetune"
 finetune.dump(ckpt)
 finetune.load(ckpt)
 
@@ -84,7 +82,7 @@ finetune.train(
     eval_freq=1,
     eval_iter=1,
     start_context=text,
-    max_generate_tokens=train_dataset.max_length
+    max_length=train_dataset.max_length
 )
 
 texts = (

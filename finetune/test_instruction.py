@@ -1,8 +1,6 @@
 import os
 import sys
 import torch
-from torch.utils.data import Dataset, DataLoader
-
 from dataset.dataset import InstructionDataset, ABCDataLoader
 from tokenizer.tokenizer import GPT2Tokenizer
 from model.pretrain_gpt2 import PretrainGPT2
@@ -48,7 +46,7 @@ val_loader = ABCDataLoader(
 
 pretrain_gpt2 = PretrainGPT2()
 model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
-finetune = InstructionFinetune(model, tokenizer, max_generate_tokens=256)
+finetune = InstructionFinetune(model, tokenizer, max_length=256)
 finetune.ignore_index = ignore_index
 
 ckpt="./data/tmp/finetune/instruct"
@@ -63,9 +61,6 @@ finetune.train(
     dump_path=ckpt,
     start_context=val_dataset.data[0]
 )
-ckpt += "/final.ckpt"
-finetune.dump(ckpt)
-finetune.load(ckpt)
 
 for data in val_dataset.data:
     response_text = finetune.generate(data)

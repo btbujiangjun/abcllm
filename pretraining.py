@@ -89,13 +89,6 @@ def train_worker(
         model = DDP(model, device_ids=[rank])
     trainer = Trainer(model, tokenizer, rank=rank)
 
-    if args.warmup:
-        ckpt_dir = args.output_dir
-        ckpts = [os.path.join(ckpt_dir, f) for f in os.listdir(ckpt_dir) if os.path.isfile(os.path.join(ckpt_dir, f))]
-        if len(ckpts) > 0:
-            lastest_ckpt = max(ckpts, key=os.path.getmtime)
-            trainer.load(lastest_ckpt)
-    
     if is_distributed:    
         torch.distributed.barrier()
 
@@ -111,12 +104,17 @@ def train_worker(
             sample_iter=args.print_sample_iter,
             dump_steps=args.save_ckpt_freq,
             dump_path=args.output_dir,
+            dump_optimizer=args.dump_optimizer,
+            is_warmup=args.warmup,
             temperature=args.temperature,
             top_k=args.top_k
         )
     
         if is_main_processor:
-            trainer.dump(f"{args.output_dir}/model_pg_final.pth")
+            trainer.dump(
+                f"{args.output_dir}/model_final",
+                dump_optimizer=args.dump_optimizer
+            )
     
         if is_distributed:
             cleanup()
@@ -133,7 +131,10 @@ def train_worker(
 
     except KeyboardInterrupt:
         if rank == 0:
-            trainer.dump(f"{args.output_dir}/model_final_interrupted.pth")
+            trainer.dump(
+                f"{args.output_dir}/model_final_interrupted",
+                dump_optimizer=args.dump_optimizer
+            )
 
 def for_server_conf(args, model_conf):
     #args.train_data = "/disk6/data/baby_data/baidubaike/baidubaike_563w_train_0.bin"
@@ -163,8 +164,10 @@ if __name__ == "__main__":
                         help='Iterations between printing sample outputs')
     parser.add_argument('--eval_freq', type=int, default=10,
                         help='Frequency of evaluations during training')
-    parser.add_argument('--save_ckpt_freq', type=int, default=500,
+    parser.add_argument('--save_ckpt_freq', type=int, default=10,
                         help='Frequency of saving model checkpoints during training')
+    parser.add_argument('--dump_optimizer', type=bool, default=False,
+                        help='saving optimizer state during training')
     parser.add_argument('--lr', type=float, default=5e-4,
                         help='Learning rate for the optimizer')
     parser.add_argument('--batch_size', type=int, default=4,

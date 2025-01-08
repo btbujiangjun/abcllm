@@ -11,8 +11,6 @@ import re
 import tiktoken
 from typing import List
 from abc import ABC, abstractmethod
-from sentencepiece import SentencePieceProcessor 
-from transformers import PreTrainedTokenizerFast
 
 class ABCTokenizer(ABC):
     def __init__(self, eos_id: int, vocab_size: int):
@@ -128,6 +126,7 @@ class SPTokenizer(ABCTokenizer):
     """
     def __init__(self, tokenizer_file: str):
         assert os.path.isfile(tokenizer_file), f"The tokenizer file not found: {tokenizer_file}."
+        from sentencepiece import SentencePieceProcessor
         self.tokenizer = SentencePieceProcessor(tokenizer_file)
         super().__init__(self.tokenizer.eos_id(), self.tokenizer.vocab_size())
 
@@ -156,6 +155,7 @@ class SPTokenizer(ABCTokenizer):
 class JsonTokenizer(ABCTokenizer):
     def __init__(self, json_file:str):
         assert os.path.isfile(json_file), f"Tokenizer file {json_file} not found."
+        from transformers import PreTrainedTokenizerFast
         self.tokenizer = PreTrainedTokenizerFast(tokenizer_file=json_file)
         super().__init__(self.tokenizer.eos_token_id, self.tokenizer.vocab_size)
 
