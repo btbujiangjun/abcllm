@@ -11,9 +11,9 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-from tokenizer.tokenizer import SPTokenizer
+from tokenizer.tokenizer import JsonTokenizer
 from dataset.dataset import GPTDataset, ABCDataLoader, GPTDataLoader
-from model.gpt import GPT_CONFIG_124M, GPTModel
+from model.llama import LLAMA32_CONFIG, Llama3Model
 from model.trainer import Trainer
 
 def plot_losses(epochs_seen, tokens_seen, train_losses, local_losses, val_losses, output_dir):

@@ -16,8 +16,6 @@ LLAMA32_CONFIG = {
     "n_kv_groups": 8,           # Key-Value groups for grouped-query attention
     "rope_base": 500_000,     # The base in RoPE's "theta"
     "dtype": torch.bfloat16,    # Lower-precision dtype to reduce memory usage
-    "drop_rate": 0.1,           # Dropout rate
-    "qkv_bias": False,          # Whether to use bias in QKV projections
     "lr": 4e-5,                 # Learning rate
     "decay": 0.1,               # Weight decay
     "max_grad_norm": 1.0,       # Max gradient clip

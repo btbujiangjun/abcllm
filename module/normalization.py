@@ -52,7 +52,7 @@ class RMSNorm(nn.Module):
         emb_dim (int): Dimension of the embedding.
         eps (float): Small constant to avoid division by zero. Default: 1e-5.
     """
-    def __init__(self, emb_dim, eps=1e-5):
+    def __init__(self, emb_dim: int, eps=1e-5):
         super().__init__()
         self.eps = eps
         self.weight = nn.Parameter(torch.ones(emb_dim)).float()
@@ -70,5 +70,5 @@ class RMSNorm(nn.Module):
         # Compute the RMS (Root Mean Square) of the input tensor
         rms = torch.sqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
         # Normalize and scale
-        return x / rms * self.weight
+        return (x / rms * self.weight).to(x.dtype)
 
