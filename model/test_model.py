@@ -3,9 +3,9 @@ import torch
 
 from dataset.dataset import GPTDataset, GPTDataLoader
 from tokenizer.tokenizer import GPT2Tokenizer
-from module.attention import MultiHeadAttention
-from model.gpt import GPTModel, GPT_CONFIG_124M, ModelWrapper
+from model.gpt import GPTModel
 from model.trainer import Trainer
+from model.generator import Generator
 from model.pretrain_gpt2 import PretrainGPT2
 
 
@@ -31,8 +31,7 @@ def prepare_dataloader(file_path: str, tokenizer, max_length: int = 8, stride: i
 
 def test_generation(model, tokenizer):
     """Test text generation with the model."""
-    mw = ModelWrapper()
-    test_output = mw.generate(model, "Who am I?", tokenizer, max_generate_tokens=50)
+    test_output = Generator.generate(model, "Who am I?", tokenizer, max_length=50)
     print("Test generation output:")
     print(test_output)
 

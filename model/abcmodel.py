@@ -3,10 +3,17 @@
 Author: JiangJun
 Date: 2025-01-06
 """
-
+import copy
 import torch
 from abc import ABC, abstractmethod
 from torch.nn.parallel import DistributedDataParallel as DDP
+
+def CONFIG_OPERATION(CONFIG):
+    config = copy.deepcopy(CONFIG)
+    for item in ["warmup_steps", "device"]:
+        if item in config:
+            del config[item]
+    return config
 
 class ABCModel(ABC, torch.nn.Module):
     """

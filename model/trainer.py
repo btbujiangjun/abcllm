@@ -14,7 +14,9 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torch.nn.parallel import DistributedDataParallel as DDP
-from model.gpt import CONFIG_OPERATION, ModelWrapper
+from model.abcmodel import CONFIG_OPERATION
+from model.manager import ModelManager
+from model.generator import Generator
 from module.scheduler import LinearWarmupLinearDecayScheduler
 
 class Trainer():
@@ -40,10 +42,10 @@ class Trainer():
         self.model = model
         self.tokenizer = tokenizer
         self.scheduler = scheduler
-        self.wrapper = ModelWrapper()
         self.rank = rank
         self.num_epochs = 0
         self.global_step = -1
+        self.manager = ModelManager(self.model)
 
     @property
     def model(self):
@@ -77,10 +79,12 @@ class Trainer():
             ,eval_freq=5
             ,eval_iter=5
             ,start_context=None
-            ,max_generate_tokens=None
+            ,max_length=None
             ,sample_iter=10_000
             ,dump_path="./"
             ,dump_steps=10_000
+            ,dump_optimizer=False
+            ,is_warmup=True
             ,temperature=0.0
             ,top_k=None
             ,eos_id=None
@@ -108,13 +112,16 @@ class Trainer():
             val_losses (list): List of validation losses.
             track_tokens_seen (list): List of tokens seen at each evaluation step.
         """
+        if is_warmup and dump_path != r"./":
+            self._load_lastest(dump_path, load_optimizer=dump_optimizer)
+
         if self.scheduler is None:
             self.init_scheduler(len(train_loader))
 
         accumulation_steps = self.model.cfg["accumulation_steps"]
         max_grad_norm = self.model.cfg["max_grad_norm"]
-        if max_generate_tokens is None:
-            max_generate_tokens = self.model.cfg["context_length"]
+        if max_length is None:
+            max_length = self.model.cfg["context_length"]
         
         train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
         train_loss, local_loss = 0, 0
@@ -172,12 +179,15 @@ class Trainer():
 
                     # Save checkpoint periodically
                     if self.rank == 0 and self.global_step > 0 and self.global_step % dump_steps == 0:
-                        self.dump(f"{dump_path}/tmp_epoch_{self.num_epochs}_steps_{self.global_step}.ckpt")
+                        self.dump(
+                            f"{dump_path}/tmp_epoch_{self.num_epochs}_steps_{self.global_step}", 
+                            dump_optimizer=dump_optimizer
+                        )
                     # Generate sample text periodically
                     if start_context is not None and self.global_step % sample_iter == 0:
                         response = self.generate(
                             start_context, 
-                            max_generate_tokens,
+                            max_length,
                             temperature, 
                             top_k, 
                             eos_id
@@ -186,11 +196,14 @@ class Trainer():
             self.num_epochs += 1
 
         if rank == 0:
-            self.dump(f"{dump_path}/final_epoch_{self.num_epochs}_steps_{self.global_step}.ckpt")
+            self.dump(
+                f"{dump_path}/final_epoch_{self.num_epochs}_steps_{self.global_step}",
+                dump_optimizer=dump_optimizer
+            )
         
         return train_losses, local_losses, val_losses, track_tokens_seen
 
-    def generate(self, start_context, max_generate_tokens=None, temperature=None, top_k=None, eos_id=None):
+    def generate(self, start_context, max_length=None, temperature=0.0, top_k=None, eos_id=None):
         """
         Generate sample text from the model.
 
@@ -200,11 +213,11 @@ class Trainer():
             top_k (int): Top-k sampling.
             eos_id (int): End-of-sequence token ID.
         """
-        generate_sample = self.wrapper.generate(
+        generate_sample = Generator.generate(
             self.model, 
             start_context, 
             self.tokenizer,
-            max_generate_tokens,
+            max_length,
             temperature=temperature,
             top_k=top_k,
             eos_id=eos_id
@@ -253,36 +266,19 @@ class Trainer():
         self.model.train()
         return val_loss
 
-    def dump(self, ckpt:str):
-        save_dir = os.path.dirname(ckpt)
-        os.makedirs(save_dir, exist_ok=True)
-        
-        torch.save({
-            "model_cfg": CONFIG_OPERATION(self.model.cfg)
-            ,"num_epochs": self.num_epochs
-            ,"global_step": self.global_step
-            ,"model_state_dict": self.model.state_dict()
-            ,"optimizer_state_dict": self.model.optimizer.state_dict()
-            }, ckpt
+    def dump(self, ckpt:str, dump_optimizer=False):
+        self.manager.dump(ckpt, 
+            self.num_epochs, 
+            self.global_step, 
+            dump_optimizer
         )
-        print(f"Dumped checkpoint {ckpt} successfully.", flush=True)
 
-    def load(self, ckpt:str):
-        checkpoint = torch.load(ckpt, weights_only=False, map_location="cpu")
-        if CONFIG_OPERATION(self.model.cfg) != CONFIG_OPERATION(checkpoint["model_cfg"]):
-            self.model.cfg.update(CONFIG_OPERATION(checkpoint["model_cfg"]))
-            self.model = self.model.init(self.model.cfg) #reinitailize model
+    def load(self, ckpt:str, load_optimizer=False):
+        self.num_epochs, self.global_step = self.manager.load(ckpt, load_optimizer, self.rank)
 
-        self.num_epochs = checkpoint["num_epochs"] 
-        self.global_step = checkpoint["global_step"]
+    def _load_lastest(self, ckpt_dir:str, load_optimizer=False):
+        ckpts = [os.path.join(ckpt_dir, f) for f in os.listdir(ckpt_dir)]
+        if len(ckpts) > 0:
+            lastest_ckpt = max(ckpts, key=os.path.getmtime)
+            self.load(lastest_ckpt, load_optimizer)
 
-        device = self.model.device
-        with torch.no_grad():
-            for name, param in self.model.named_parameters():
-                if name in checkpoint["model_state_dict"]:
-                    param.copy_(checkpoint["model_state_dict"][name].to(param.dtype)).to(device)
-                else:
-                    print(f"Rank {self.rank} Warning: {name} not found in state_dict.", flush=True)
-        self.model.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        
-        print(f"Rank {self.rank} Loaded checkpoint {ckpt} with {self.num_epochs} epochs and step {self.global_step}.", flush=True)

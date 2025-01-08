@@ -9,15 +9,12 @@ Author: JiangJun
 Date: 2024-12-16
 """
 
-
-import copy
 import torch
 import torch.nn as nn
-from torch.nn.parallel import DistributedDataParallel as DDP
-from module.position import AbsolutePositionEmbedding
-from module.attention import MultiHeadAttention
 from module.activation import GELU
 from module.normalization import LayerNorm
+from module.attention import MultiHeadAttention
+from module.position import AbsolutePositionEmbedding
 from model.abcmodel import ABCModel
 
 # Default configuration for a GPTModel
@@ -39,13 +36,6 @@ GPT_CONFIG_124M = {
             "cuda" if torch.cuda.is_available() else "cpu")
     )
 }
-
-def CONFIG_OPERATION(CONFIG):
-    config = copy.deepcopy(CONFIG)
-    for item in ["warmup_steps", "device"]:
-        if item in config:
-            del config[item]
-    return config
 
 class GPTModel(ABCModel):
     """
@@ -144,116 +134,4 @@ class FeedForward(nn.Module):
 
     def forward(self, x: torch.Tensor)->torch.Tensor:
         return self.layers(x)
-
-class ModelWrapper:
-    """
-    Wrapper class for handling text generation with a GPTModel.
-    """
-    def __init__(self):
-        pass
-
-    def _generate(self
-            ,model
-            ,ids
-            ,max_generate_tokens=None
-            ,context_length=None
-            ,temperature=0.0
-            ,top_k=None
-            ,eos_id=None):
-        """
-        Internal method for token generation using autoregressive sampling.
-
-        Args:
-            model: GPT model instance.
-            ids (torch.Tensor): Input token IDs of shape (1, seq_len).
-            max_generate_tokens (int): Maximum number of tokens to generate.
-            context_length (int, optional): Maximum context length.
-            temperature (float): Sampling temperature.
-            top_k (int, optional): Top-k sampling.
-            eos_id (int, optional): End-of-sequence token ID.
-
-        Returns:
-            torch.Tensor: Generated token IDs of shape (1, seq_len + max_generate_tokens).
-        """
-        context_length = context_length or model.cfg["context_length"]
-        max_generate_tokens = max_generate_tokens or context_length
-        ids = ids.to(model.device)
-
-        for _ in range(max_generate_tokens):
-            with torch.no_grad():
-                #Truncate to the last `context_length` tokens
-                logits = model(ids[:, -context_length:])
-            #Consider only the last timestep's logits
-            #-1: (batch, num_tokens, vacab_size) -> (batch, vocab_size)
-            logits = logits[:, -1, :] #
-
-            if top_k is not None:
-                # Apply top-k filtering
-                top_logits, _ = torch.topk(logits, top_k)
-                min_val = top_logits[:, -1]
-                logits = torch.where(
-                    logits < min_val
-                    ,torch.tensor(float("-inf")).to(logits.device)
-                    ,logits
-                )
-
-            # Apply temperature scaling and sample from probabilities
-            if temperature is not None and temperature > 0.0:
-                probs = torch.softmax(logits / temperature, dim=-1)
-                ids_next = torch.multinomial(probs, num_samples=1)
-            else:
-                # Deterministic greedy decoding
-                ids_next = torch.argmax(logits, dim=-1, keepdim=True)
-
-            # Stop generation if the end-of-sequence token is generated
-            if eos_id is not None and ids_next.item() == eos_id:
-                break
-
-            # Append the generated token to the sequence
-            ids = torch.cat((ids, ids_next), dim=1)
-
-        return ids
-
-    def generate(self
-            ,model
-            ,start_context
-            ,tokenizer
-            ,max_generate_tokens=None
-            ,context_length=None
-            ,temperature=0.0
-            ,top_k=None
-            ,eos_id=None):
-        """
-        Generate text using the model.
-
-        Args:
-            model: GPT model instance.
-            start_context (str): Starting context for generation.
-            tokenizer: Tokenizer to encode and decode text.
-            max_generate_tokens (int): Maximum number of tokens to generate.
-            context_length (int, optional): Maximum context length.
-            temperature (float): Sampling temperature.
-            top_k (int, optional): Top-k sampling.
-            eos_id (int, optional): End-of-sequence token ID.
-
-        Returns:
-            str: Generated text.
-        """
-        encode_ids = tokenizer.encode(start_context)
-        encode_tensor = torch.tensor(encode_ids).unsqueeze(0)
-
-        if eos_id is None:
-            eos_id = tokenizer.eos_id
-
-        out_ids = self._generate(
-            model
-            ,encode_tensor
-            ,max_generate_tokens
-            ,context_length=context_length
-            ,temperature=temperature
-            ,top_k=top_k
-            ,eos_id=eos_id
-        )
-
-        return tokenizer.decode(out_ids.squeeze(0).tolist()).strip()
 
