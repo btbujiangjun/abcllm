@@ -5,18 +5,6 @@ trainer.py
 Trainer class for training and evaluating GPT-based models. This script provides functionalities for 
 training loops, evaluation, checkpoint management, and sample text generation.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
 Author: JiangJun
 Date: 2024-12-16
 """
@@ -26,15 +14,15 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torch.nn.parallel import DistributedDataParallel as DDP
-from model.gpt import GPTModel, CONFIG_OPERATION, ModelWrapper
+from model.gpt import CONFIG_OPERATION, ModelWrapper
 from module.scheduler import LinearWarmupLinearDecayScheduler
 
 class Trainer():
     """
-    Trainer class for training and evaluating a GPTModel.
+    Trainer class for training and evaluating a Model.
 
     Attributes:
-        model: The GPTModel.
+        model: The Model.
         tokenizer: Tokenizer used for text processing.
         wrapper (ModelWrapper): Wrapper for handling generation tasks.
         num_epochs (int): Tracks the total number of completed epochs.
@@ -45,7 +33,7 @@ class Trainer():
         Initialize the Trainer object.
 
         Args:
-            model: GPTModel to be trained.
+            model: Model to be trained.
             tokenizer: Tokenizer instance for text processing.
         """
         self._model = None
@@ -283,7 +271,7 @@ class Trainer():
         checkpoint = torch.load(ckpt, weights_only=False, map_location="cpu")
         if CONFIG_OPERATION(self.model.cfg) != CONFIG_OPERATION(checkpoint["model_cfg"]):
             self.model.cfg.update(CONFIG_OPERATION(checkpoint["model_cfg"]))
-            self.model = GPTModel(self.model.cfg) #reinitailize model
+            self.model = self.model.init(self.model.cfg) #reinitailize model
 
         self.num_epochs = checkpoint["num_epochs"] 
         self.global_step = checkpoint["global_step"]

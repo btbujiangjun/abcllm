@@ -12,7 +12,6 @@ class ABCModel(ABC, torch.nn.Module):
     """
     Abstract class, define a LLM model
     """
-    
     def __init__(self, cfg):
         super().__init__()
         self._name = "ABCModel"
@@ -61,6 +60,10 @@ class ABCModel(ABC, torch.nn.Module):
             ,lr=self.cfg["lr"]
             ,weight_decay=self.cfg["decay"]
         )
+   
+    @abstractmethod
+    def init(self, cfg):
+        pass
 
     @abstractmethod
     def forward(self, x: torch.Tensor)->torch.Tensor:

@@ -30,7 +30,11 @@ class RotaryPositionEmbedding(nn.Module):
         head_dim (int): Head dimension size (must be even).
     """
 
-    def __init__(self, context_length: int, head_dim: int, theta=10_000):
+    def __init__(self, 
+            context_length: int, 
+            head_dim: int, 
+            theta=10_000, 
+            dtype=torch.float32):
         """
         Initialize the RoPE class.
 
@@ -42,24 +46,37 @@ class RotaryPositionEmbedding(nn.Module):
         super().__init__()
 
         assert head_dim % 2 == 0, f"The head_dim dimension {head_dim} must be even."
-        self.context_length =  context_length
+        
         self.head_dim = head_dim
+        self.theta = theta
+        if dtype is None:
+            dtype = torch.float32
+        self.dtype = dtype
+        self._precompute(context_length)
 
+    def _precompute(self, seq_len, device="cpu"):
+        self.seq_len = seq_len
         #precompute sin and cos for all positions
-        #(context_length, 1)
-        position_ids = torch.arange(context_length, dtype=torch.float32).unsqueeze(1) #(context_length, 1)
-        indices = torch.arange(head_dim // 2, dtype=torch.float32) # (head_dimi // 2,)
-        theta = position_ids / (theta ** (2 * indices / head_dim)) # (context_length, head_dim // 2)
-        self.sin = torch.sin(theta).unsqueeze(0).unsqueeze(0) # (1, 1, context_length, head_dim // 2)
-        self.cos = torch.cos(theta).unsqueeze(0).unsqueeze(0) # (1, 1, context_length, head_dim)// 2
+        position_ids = torch.arange(seq_len, dtype=self.dtype).unsqueeze(1) #(seq_len, 1)
+        indices = torch.arange(self.head_dim // 2, dtype=self.dtype) # (head_dim // 2,)
+        theta = position_ids / (self.theta ** (2 * indices / self.head_dim)) # (seq_len, head_dim // 2)
+        self.sin = torch.sin(theta).unsqueeze(0).unsqueeze(0).to(device) # (1, 1, seq_len, head_dim // 2)
+        self.cos = torch.cos(theta).unsqueeze(0).unsqueeze(0).to(device) # (1, 1, seq_len, head_dim)// 2
 
     def forward(self, x :torch.Tensor) -> torch.Tensor:
         batch_size, num_heads, seq_len, head_dim = x.shape
         assert head_dim % 2 == 0, "Head dimension {head_dim} must be even."
-        assert seq_len == self.context_length, f"Mismatch in context_length {seq_len} vs {self.context_length}."
         assert head_dim == self.head_dim, f"Mismatch in dimension {head_dim} vs {self.head_dim}."
+        
+        if(seq_len != self.seq_len):
+            self._precompute(seq_len, x.device)
+
+        if self.sin.device != x.device:
+            self.sin = self.sin.to(x.device)
+            self.cos = self.cos.to(x.device)
 
         x1, x2 = x[..., ::2], x[..., 1::2] # (batch_size, num_heads, context_length, head_dim // 2)
+
         return torch.cat([x1 * self.cos - x2 * self.sin, x1 * self.sin + x2 * self.cos], dim=-1)
 
 

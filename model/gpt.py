@@ -53,10 +53,12 @@ class GPTModel(ABCModel):
     and output head for generating logits.
     """
     def __init__(self, cfg):
-        super().__init__(cfg)
-        self._name = "gpt2"
-        self._version = "1.0"
+        self.init(cfg)
 
+    def init(self, cfg):
+        super().__init__(cfg)
+        self._name = "gpt2" if "name" not in cfg else cfg["name"]
+        self._version = "1.0" if "version" not in cfg else cfg["version"]
         vocab_size, emb_dim, device = cfg["vocab_size"], cfg["emb_dim"], cfg["device"]
 
         # Embedding layers

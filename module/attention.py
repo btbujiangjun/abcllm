@@ -197,11 +197,12 @@ class GroupedQueryAttention(nn.Module):
             context_length: int,
             num_heads: int,
             num_kv_groups: int,
-            rope_base=10_000
+            rope_base: int =10_000,
+            dtype=None
         ):
         super().__init__()
-        assert d_out % num_heads == 0, f"d_out must be divisible by num_heads."
-        assert num_heads % num_kv_groups == 0, "num_heads must be divisible by num_kv_groups."
+        assert d_out % num_heads == 0, f"d_out {d_out} must be divisible by num_heads {num_heads}."
+        assert num_heads % num_kv_groups == 0, f"num_heads {num_heads} must be divisible by num_kv_groups {num_kv_groups}."
 
         self.d_out = d_out
         self.num_heads = num_heads
@@ -209,15 +210,15 @@ class GroupedQueryAttention(nn.Module):
         self.num_kv_groups = num_kv_groups
         self.group_size = num_heads // num_kv_groups
 
-        self.w_query = nn.Linear(d_in, d_out, bias=False)
-        self.w_key = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False)
-        self.w_value = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False)
-        self.out_proj = nn.Linear(d_out, d_out, bias=False)
+        self.w_query = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.w_key = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
+        self.w_value = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
+        self.out_proj = nn.Linear(d_out, d_out, bias=False, dtype=dtype)
 
         mask = torch.triu(torch.ones(context_length, context_length), diagonal=1)
         self.register_buffer("mask", mask)
 
-        self.position_embedding = RotaryPositionEmbedding(context_length, self.head_dim)
+        self.position_embedding = RotaryPositionEmbedding(context_length, self.head_dim, dtype=dtype)
 
     def forward(self, x: torch.Tensor) ->torch.Tensor:
         batch_size, num_tokens, d_in = x.shape
@@ -232,8 +233,8 @@ class GroupedQueryAttention(nn.Module):
         values = values.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
 
         #Position embedding
-        keys = position_embedding(keys)
-        queries = position_embedding(queries)
+        keys = self.position_embedding(keys)
+        queries = self.position_embedding(queries)
 
         #expand keys and values to match the number of heads
         keys = keys.repeat_interleave(self.group_size, dim=1) #(batch_size, num_heads, num_tokens, head_dim)
@@ -250,7 +251,7 @@ class GroupedQueryAttention(nn.Module):
         assert keys.shape[-1] == self.head_dim
 
         # (batch_size, num_tokens, num_heads, head_dim)
-        context = torch.matmul(attn_weights, values).transpose(-2, -1).reshape(batch_size, num_tokens, self.d_out)
+        context = torch.matmul(attn_weight, values).transpose(-2, -1).reshape(batch_size, num_tokens, self.d_out)
         return self.out_proj(context)
 
 
