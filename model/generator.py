@@ -23,13 +23,12 @@ class Generator:
             model: ABCModel,
             start_context: str,
             tokenizer: ABCTokenizer,
-            prompt_tensor: torch.Tensor,
             max_length: int = None,
             context_length: int = None,
             temperature: float = 0.0,
             top_k: int = None,
             eos_id: int = None,
-        ) -> torch.Tensor:
+        ) -> str:
         """
         Generate text using the model by autoregressive sampling.
 

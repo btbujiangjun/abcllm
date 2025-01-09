@@ -45,6 +45,7 @@ class Trainer():
         self.rank = rank
         self.num_epochs = 0
         self.global_step = -1
+        self.max_length = None
         self.manager = ModelManager(self.model)
 
     @property
@@ -113,16 +114,15 @@ class Trainer():
             track_tokens_seen (list): List of tokens seen at each evaluation step.
         """
         if is_warmup and dump_path != r"./":
-            self._load_lastest(dump_path, load_optimizer=dump_optimizer)
+            self.load_lastest(dump_path, load_optimizer=dump_optimizer)
 
         if self.scheduler is None:
             self.init_scheduler(len(train_loader))
 
         accumulation_steps = self.model.cfg["accumulation_steps"]
         max_grad_norm = self.model.cfg["max_grad_norm"]
-        if max_length is None:
-            max_length = self.model.cfg["context_length"]
-        
+        max_length = max_length or self.max_length or self.model.cfg["context_length"]
+         
         train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
         train_loss, local_loss = 0, 0
         tokens_seen, total_tokens = 0, num_epochs * train_loader.token_size
@@ -213,16 +213,15 @@ class Trainer():
             top_k (int): Top-k sampling.
             eos_id (int): End-of-sequence token ID.
         """
-        generate_sample = Generator.generate(
-            self.model, 
-            start_context, 
-            self.tokenizer,
-            max_length,
+        return Generator.generate(
+            model=self.model, 
+            start_context=start_context, 
+            tokenizer=self.tokenizer,
+            max_length=max_length,
             temperature=temperature,
             top_k=top_k,
             eos_id=eos_id
         )
-        return generate_sample
 
     def _compute_loss(self, input_batch, target_batch):
         """
@@ -276,7 +275,10 @@ class Trainer():
     def load(self, ckpt:str, load_optimizer=False):
         self.num_epochs, self.global_step = self.manager.load(ckpt, load_optimizer, self.rank)
 
-    def _load_lastest(self, ckpt_dir:str, load_optimizer=False):
+    def load_lastest(self, ckpt_dir:str, load_optimizer=False):
+        if not os.path.isdir(ckpt_dir):
+            os.makedirs(ckpt_dir, exist_ok=True)
+
         ckpts = [os.path.join(ckpt_dir, f) for f in os.listdir(ckpt_dir)]
         if len(ckpts) > 0:
             lastest_ckpt = max(ckpts, key=os.path.getmtime)

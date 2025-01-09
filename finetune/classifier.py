@@ -58,6 +58,7 @@ class ClassifierFinetune(Trainer):
 
         return correct_predictions / num_examples
 
+    @torch.no_grad()
     def generate(self
             ,text
             ,max_length=None
@@ -65,13 +66,8 @@ class ClassifierFinetune(Trainer):
             ,top_k=0
             ,eos_id=None
         ):
-        if max_length is None:
-            max_length = self.model.pos_emb.weight.shape[0]
-        else:
-            max_length = min(max_length, self.model.pos_emb.weight.shape[0])
-        
-        if eos_id is None:
-            eos_id = self.tokenizer.eos_id
+        max_length = self.model.cfg["context_length"]
+        eos_id = eos_id or self.tokenizer.eos_id
 
         input_ids = self.tokenizer.encode(text)
         #truncate if too long
@@ -81,8 +77,7 @@ class ClassifierFinetune(Trainer):
         input_tensor = torch.tensor(input_ids, device=self.model.device).unsqueeze(0)
 
         self.model.eval()
-        with torch.no_grad():
-            logits = self.model(input_tensor)[:, -1, :]
+        logits = self.model(input_tensor)[:, -1, :]
         predicted_label = torch.argmax(logits, dim=-1).item()
 
         return predicted_label

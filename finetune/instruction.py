@@ -5,7 +5,6 @@
 #
 
 import torch
-from dataset.dataset import InstructionDataset
 from model.trainer import Trainer
 
 class InstructionFinetune(Trainer):
@@ -33,17 +32,17 @@ class InstructionFinetune(Trainer):
             temperature:float = 0.0, 
             top_k: int = None, 
             eos_id:  int = None):
-        input_text = InstructionDataset.format_input(start_context)
-        if self.max_length > 0:
-            max_length = self.max_length
-        
+        max_length = max_length or self.max_length or self.model.cfg["context_length"]
         response_text = super().generate(
-            start_context = input_text, 
+            start_context = start_context, 
             max_length = max_length, 
             temperature = temperature, 
             top_k = top_k, 
             eos_id = eos_id
         )
-        response_text = response_text[len(input_text):].replace("\n### Response:", "").strip()
-        return f"Instruction Finetune:\nStart_Context:{input_text}\n{'*' * 80}\nGenerate_Text:{response_text}\n{'*' * 80}"
+        response_text = response_text[len(start_context):].replace("\n### Response:", "").strip()
+        return {
+            "Start_Context":start_context,
+            "Generate_Text":response_text,
+        }
 

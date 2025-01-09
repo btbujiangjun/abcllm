@@ -15,7 +15,6 @@ from typing import List
 import pandas as pd
 import numpy as np
 import torch
-from functools import partial
 from torch.utils.data import Dataset, DataLoader
 
 class GPTDataset(Dataset):
@@ -126,9 +125,9 @@ class GPTDataset(Dataset):
 
 
 class ABCDataLoader(DataLoader):
-    def __init__(self, *args, token_size=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.token_size = token_size
+        self.token_size = self.dataset.token_size
 
 class GPTDataLoader():
     def __init__(self, tokenizer, num_workers=0):
@@ -147,7 +146,6 @@ class GPTDataLoader():
             shuffle=shuffle,
             drop_last=drop_last,
             num_workers=self.num_workers,
-            token_size=dataset.token_size
         )
 
     def text_dataloader(self
@@ -302,13 +300,10 @@ class InstructionDataset(Dataset):
             ignore_index=-100, 
             file_encoding="utf-8"
         ):
-        self.encoded_ids = []
         with open(json_file, "r", encoding=file_encoding) as f:
-            self.data = json.load(f)
-            for entry in self.data:
-                full_text = self.format_input(entry, with_output=True)
-                self.encoded_ids.append(tokenizer.encode(full_text)[:max_length])
-        
+            data = json.load(f)
+        self.encoded_ids = [tokenizer.encode(self.format_input(item, with_output=True))[:max_length] for item in data]
+            
         self.max_length = min(max_length, max([len(item) for item in self.encoded_ids]))
         self.tokenizer = tokenizer
         self.token_size = len(self.encoded_ids) * self.max_length

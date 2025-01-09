@@ -66,7 +66,7 @@ def train_worker(
         )
         model_cfg['device'] = torch.device(f"cuda:{rank}")
         sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=True)
-        train_loader = ABCDataLoader(dataset, sampler=sampler, batch_size=args.batch_size, token_size=dataset.token_size)
+        train_loader = ABCDataLoader(dataset, sampler=sampler, batch_size=args.batch_size)
     else:
         train_loader = dataloader.preprocess_file_dataloader(
             [args.train_data],

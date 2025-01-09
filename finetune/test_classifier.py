@@ -39,7 +39,6 @@ train_loader = ABCDataLoader(
     shuffle=True,
     num_workers=num_workers,
     drop_last=True,
-    token_size = train_dataset.token_size,
 )
 
 val_loader = ABCDataLoader(
@@ -47,7 +46,6 @@ val_loader = ABCDataLoader(
     batch_size=batch_size,
     num_workers=num_workers,
     drop_last=False,
-    token_size = val_dataset.token_size,
 )
 
 test_loader = ABCDataLoader(
@@ -55,9 +53,9 @@ test_loader = ABCDataLoader(
     batch_size=batch_size,
     num_workers=num_workers,
     drop_last=False,
-    token_size = test_dataset.token_size,
 )
 
+ckpt="./data/tmp/finetune/spam_finetune"
 pretrain_gpt2 = PretrainGPT2()
 model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2", dtype=torch.float32)
 finetune = ClassifierFinetune(model, tokenizer, num_classes=2)
@@ -67,13 +65,9 @@ finetune.train(
     num_epochs=5,
     eval_freq=1,
     eval_iter=1,
+    dump_path=ckpt,
     start_context=text,
-    max_length=train_dataset.max_length
 )
-
-ckpt="./data/tmp/finetune/spam_finetune"
-finetune.dump(ckpt)
-finetune.load(ckpt)
 
 finetune.train(
     test_loader, 
@@ -81,8 +75,8 @@ finetune.train(
     num_epochs=5,
     eval_freq=1,
     eval_iter=1,
+    dump_path=ckpt,
     start_context=text,
-    max_length=train_dataset.max_length
 )
 
 texts = (

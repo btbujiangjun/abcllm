@@ -60,11 +60,13 @@ class ModelManager:
                     param.copy_(checkpoint["model_state_dict"][name].to(param.dtype)).to(device)
                 else:
                     print(f"Rank {rank} Warning: {name} not found in state_dict.", flush=True)
+        
         if load_optimizer:
             checkpoint = torch.load(f"{ckpt}/{self.optimizer_file}", weights_only=False, map_location="cpu")
             self.model.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
         print(f"Rank {rank} Loaded checkpoint {ckpt} with {num_epochs} epochs and step {global_step}.", flush=True)
+
         return num_epochs, global_step
 
 
