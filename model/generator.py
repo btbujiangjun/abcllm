@@ -18,8 +18,11 @@ class Generator:
     """
 
     @staticmethod
-    def _generate(
+    @torch.no_grad()
+    def generate(
             model: ABCModel,
+            start_context: str,
+            tokenizer: ABCTokenizer,
             prompt_tensor: torch.Tensor,
             max_length: int = None,
             context_length: int = None,
@@ -28,11 +31,12 @@ class Generator:
             eos_id: int = None,
         ) -> torch.Tensor:
         """
-        Internal method for token generation using autoregressive sampling.
+        Generate text using the model by autoregressive sampling.
 
         Args:
             model (ABCModel): The language model instance.
-            prompt_tensor (torch.Tensor): Input token IDs of shape (1, seq_len).
+            start_context (str): Starting context for generation.
+            tokenizer (ABCTokenizer): Tokenizer for encoding and decoding text.
             max_length (int, optional): Maximum number of tokens to generate. Defaults to model's context length.
             context_length (int, optional): Maximum context length. Defaults to model's context length.
             temperature (float, optional): Sampling temperature. Defaults to 0.0 (deterministic).
@@ -40,16 +44,20 @@ class Generator:
             eos_id (int, optional): End-of-sequence token ID. Defaults to None (no early stopping).
 
         Returns:
-            torch.Tensor: Generated token IDs of shape (1, seq_len + max_length).
+            str: Generated text(seq_len + max_length).
         """
+        eos_id = eos_id or tokenizer.eos_id
         context_length = context_length or model.cfg["context_length"]
         max_length = max_length or context_length
-        generate_tensor = prompt_tensor.to(model.device)
+        
+        generate_tensor = torch.tensor(
+            tokenizer.encode(start_context), 
+            dtype=torch.long
+        ).unsqueeze(0).to(model.device)
 
         for _ in range(max_length):
-            with torch.no_grad():
-                #Truncate to the last `context_length` tokens
-                logits = model(generate_tensor[:, -context_length:])
+            #Truncate to the last `context_length` tokens
+            logits = model(generate_tensor[:, -context_length:])
             #Consider only the last timestep's logits
             #-1: (batch, num_tokens, vacab_size) -> (batch, vocab_size)
             logits = logits[:, -1, :] #
@@ -78,49 +86,6 @@ class Generator:
 
             # Append the generated token to the sequence
             generate_tensor = torch.cat((generate_tensor, generate_next), dim=1)
-
-        return generate_tensor
-
-    @classmethod
-    def generate(
-            cls,
-            model: ABCModel,
-            start_context: str,
-            tokenizer: ABCTokenizer,
-            max_length: int = None,
-            context_length: int = None,
-            temperature: float = 0.0,
-            top_k: int = None,
-            eos_id: int = None,
-        ) -> torch.Tensor:
-        """
-        Generate text using the model.
-
-        Args:
-            model (ABCModel): The language model instance.
-            start_context (str): Starting context for generation.
-            tokenizer (ABCTokenizer): Tokenizer for encoding and decoding text.
-            max_length (int, optional): Maximum number of tokens to generate. Defaults to model's context length.
-            context_length (int, optional): Maximum context length. Defaults to model's context length.
-            temperature (float, optional): Sampling temperature. Defaults to 0.0 (deterministic).
-            top_k (int, optional): Top-k sampling for nucleus filtering. Defaults to None (no filtering).
-            eos_id (int, optional): End-of-sequence token ID. Defaults to tokenizer's EOS ID.
-
-        Returns:
-            str: Generated text.
-        """
-        prompt_tensor = torch.tensor(tokenizer.encode(start_context), dtype=torch.long).unsqueeze(0)
-        eos_id = eos_id or tokenizer.eos_id
-
-        generate_tensor = cls._generate(
-            model=model,
-            prompt_tensor=prompt_tensor,
-            max_length=max_length,
-            context_length=context_length,
-            temperature=temperature,
-            top_k=top_k,
-            eos_id=eos_id,
-        )
 
         return tokenizer.decode(generate_tensor.squeeze(0).tolist()).strip()
 

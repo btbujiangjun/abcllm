@@ -163,7 +163,7 @@ if __name__ == "__main__":
                         help='Iterations between printing sample outputs')
     parser.add_argument('--eval_freq', type=int, default=10,
                         help='Frequency of evaluations during training')
-    parser.add_argument('--save_ckpt_freq', type=int, default=10,
+    parser.add_argument('--save_ckpt_freq', type=int, default=500,
                         help='Frequency of saving model checkpoints during training')
     parser.add_argument('--dump_optimizer', type=bool, default=False,
                         help='saving optimizer state during training')
