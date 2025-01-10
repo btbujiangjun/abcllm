@@ -1,7 +1,7 @@
-import argparse
 import os
-from pathlib import Path
 import time
+import argparse
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.distributed as dist
