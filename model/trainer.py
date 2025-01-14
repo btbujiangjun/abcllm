@@ -10,6 +10,7 @@ Date: 2024-12-16
 """
 import os
 import time
+from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
@@ -279,8 +280,8 @@ class Trainer():
         if not os.path.isdir(ckpt_dir):
             os.makedirs(ckpt_dir, exist_ok=True)
 
-        ckpts = [os.path.join(ckpt_dir, f) for f in os.listdir(ckpt_dir)]
+        ckpts = [p for p in Path(f'{ckpt_dir}').glob(f"**/{self.manager.model_file}")]
         if len(ckpts) > 0:
             lastest_ckpt = max(ckpts, key=os.path.getmtime)
-            self.load(lastest_ckpt, load_optimizer)
+            self.load(lastest_ckpt.parent, load_optimizer)
 
