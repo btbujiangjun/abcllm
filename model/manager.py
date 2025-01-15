@@ -48,7 +48,7 @@ class ModelManager:
         checkpoint = torch.load(f"{ckpt}/{self.cfg_file}", weights_only=False, map_location="cpu")
         if CONFIG_OPERATION(self.model.cfg) != CONFIG_OPERATION(checkpoint["model_cfg"]):
             self.model.cfg.update(CONFIG_OPERATION(checkpoint["model_cfg"]))
-            self.model = self.model.init(self.model.cfg) #reinitailize model
+            self.model.init(self.model.cfg) #reinitailize model
         num_epochs = checkpoint["num_epochs"] 
         global_step = checkpoint["global_step"]
 
