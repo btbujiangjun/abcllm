@@ -140,7 +140,8 @@ def for_server_conf(args, model_conf):
     #args.train_data = "/disk6/data/baby_data/baidubaike/baidubaike_563w_train_1.bin"
     #args.train_data = "/disk6/data/baby_data/c4_zh/c4_zh_train_0.bin"
     #args.train_data = "/disk6/data/baby_data/wiki/wiki.bin"
-    args.train_data = "/disk6/data/baby_data/c4_zh/c4_zh_train_1.bin"
+    #args.train_data = "/disk6/data/baby_data/c4_zh/c4_zh_train_1.bin"
+    args.train_data = "/disk6/data/baby_data/wudaocorpus_zh/wudaocorpus_zh_10_16.bin"
     args.val_data = "/disk6/data/baby_data/baidubaike/baidubaike_563w_val.bin"
     args.output_dir = "/disk6/data/baidubaike_checkpoints_multi_gpu"
     args.print_sample_iter = 250
