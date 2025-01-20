@@ -15,7 +15,8 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torch.nn.parallel import DistributedDataParallel as DDP
-from model.abcmodel import CONFIG_OPERATION
+from model.abcmodel import CONFIG_OPERATION, ABCModel
+from tokenizer.tokenzier import ABCTokenizer
 from model.manager import ModelManager
 from model.generator import Generator
 from module.scheduler import LinearWarmupLinearDecayScheduler
@@ -31,7 +32,7 @@ class Trainer():
         num_epochs (int): Tracks the total number of completed epochs.
         global_step (int): Global training step counter.
     """
-    def __init__(self, model, tokenizer, scheduler=None, rank=0):
+    def __init__(self, model:ABCModel, tokenizer:ABCTokenizer, scheduler=None, rank=0):
         """
         Initialize the Trainer object.
 
