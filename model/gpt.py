@@ -30,7 +30,7 @@ GPT_CONFIG_124M = {
     "decay": 0.1,  # Weight decay
     "max_grad_norm": 1.0, # Max gradient clip
     "accumulation_steps": 4, # Gradient accumulation update steps
-    "warmup_steps": 1000, # Warmup steps with a larger lr
+    "warmup_steps": 1, # Warmup steps with a larger lr
     "device": torch.device(
         "mps" if torch.backends.mps.is_available() else (
             "cuda" if torch.cuda.is_available() else "cpu")

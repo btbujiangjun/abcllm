@@ -16,7 +16,7 @@ import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 from torch.nn.parallel import DistributedDataParallel as DDP
 from model.abcmodel import CONFIG_OPERATION, ABCModel
-from tokenizer.tokenzier import ABCTokenizer
+from tokenizer.tokenizer import ABCTokenizer
 from model.manager import ModelManager
 from model.generator import Generator
 from module.scheduler import LinearWarmupLinearDecayScheduler
