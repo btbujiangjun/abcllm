@@ -1,12 +1,12 @@
 import os
 import torch
-from model.abcmodel import CONFIG_OPERATION
+from model.abcmodel import ABCModel,CONFIG_OPERATION
 
 class ModelManager:
     """
     To manage saving, loading, and exporting torch models.
     """
-    def __init__(self, model:torch.nn.Module):
+    def __init__(self, model:ABCModel):
         self.model = model
         self.cfg_file = "cfg.ckpt"
         self.model_file = "weights.ckpt"

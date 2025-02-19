@@ -76,4 +76,7 @@ class ABCModel(ABC, torch.nn.Module):
     def forward(self, x: torch.Tensor)->torch.Tensor:
         pass
 
-
+    @staticmethod
+    @torch.no_grad()
+    def from_pretrained(model_path:str):
+        pass
