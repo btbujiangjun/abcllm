@@ -1,17 +1,33 @@
-#
-#
-#
-#
-#
+# -*- coding: utf-8 -*-
+"""
+Instruction Fine-Tuning Module
+
+This module defines the `InstructionFinetune` class, which is designed to fine-tune 
+a transformer-based model for instruction-following tasks. It supports loss computation 
+with an ignore index and provides a method for generating responses based on a given prompt.
+
+Author: Jiang Jun
+Date: 2025-02-18
+"""
 
 import torch
 from model.trainer import Trainer
 
 class InstructionFinetune(Trainer):
-    def __init__(self, 
-            model, 
-            tokenizer, 
-            max_length=0):
+    """
+    A class for fine-tuning a transformer model to follow instructions.
+
+    Inherits from the Trainer class and enables:
+    - Configurable sequence length.
+    - Loss computation with an ignore index for masked training.
+    - Text generation tailored for instruction-based response generation.
+
+    Attributes:
+        max_length (int): Maximum sequence length for generation.
+        ignore_index (int): Token index to ignore during loss computation.
+    """
+
+    def __init__(self, model, tokenizer, max_length=0):
         super().__init__(model, tokenizer)
         self.max_length = max_length
         self.ignore_index = -999
