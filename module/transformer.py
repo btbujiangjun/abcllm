@@ -19,18 +19,18 @@ class Gpt2Transformer(nn.Module):
             qkv_bias:bool=False,
             device="cpu"):
         super().__init__()
-        
+        self.device = device
+
         # Embedding layer
         self.tok_emb = nn.Embedding(vocab_size, emb_dim).to(device)
         self.pos_emb = AbsolutePositionEmbedding(context_len, emb_dim).to(device)
-        self.drop_emb = nn.Dropout(dropout).to(device)
+        self.dropout = nn.Dropout(dropout).to(device)
 
         # Transformer layers
         self.trf_blocks = nn.Sequential(
-            *[TransformerBlock(
-                d_in = emb_dim,
-                d_out = emb_dim,
-                context_length = context_len,
+            *[self.TransformerBlock(
+                emb_dim = emb_dim,
+                context_len = context_len,
                 num_heads = num_heads,
                 dropout = dropout,
                 qkv_bias = qkv_bias
@@ -46,7 +46,7 @@ class Gpt2Transformer(nn.Module):
 
         # Token and position embedding
         token_embeds = self.tok_emb(x)
-        pos_embeds = self.pos_emb(tok_embeds)
+        pos_embeds = self.pos_emb(token_embeds)
         x = self.dropout(token_embeds + pos_embeds)
 
         # Transformer
@@ -79,7 +79,7 @@ class Gpt2Transformer(nn.Module):
                 qkv_bias = qkv_bias
             )
 
-            self.ff = FeedForward(emb_dim)
+            self.ff = self.FeedForward(emb_dim)
             self.norm1 = LayerNorm(emb_dim)
             self.norm2 = LayerNorm(emb_dim)
             self.dropout = nn.Dropout(dropout)
