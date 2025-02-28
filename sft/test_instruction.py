@@ -5,7 +5,7 @@ import torch
 from dataset.dataset import InstructionDataset, ABCDataLoader
 from tokenizer.tokenizer import GPT2Tokenizer
 from model.pretrain_gpt2 import PretrainGPT2
-from finetune.instruction import InstructionFinetune
+from sft.instruction import InstructionFinetune
 
 
 torch.manual_seed(123)

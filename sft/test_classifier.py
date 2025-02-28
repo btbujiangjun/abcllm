@@ -4,7 +4,7 @@ import torch
 from dataset.dataset import ABCDataLoader, LabeledDataset
 from tokenizer.tokenizer import GPT2Tokenizer
 from model.pretrain_gpt2 import PretrainGPT2
-from finetune.classifier import ClassifierFinetune
+from sft.classifier import ClassifierFinetune
 
 
 text = """"It's the last he painted, you know," Mrs. Gisburn Jiang said with pardonable pride."""
