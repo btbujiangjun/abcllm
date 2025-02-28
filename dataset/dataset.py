@@ -40,7 +40,7 @@ class GPTDataset(Dataset):
         self.eos_id = eos_id
         self.token_ids = token_ids
         self.token_size = len(token_ids)
-        self.len = int((len(token_ids) - max_length) / stride) + 1
+        self.len = (self.token_size - max_length) // stride + 1
 
     @classmethod
     def from_text(cls
