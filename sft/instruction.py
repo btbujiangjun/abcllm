@@ -51,11 +51,12 @@ class InstructionFinetune(Trainer):
         max_length = max_length or self.max_length or self.model.cfg["context_length"]
         response_text = super().generate(
             start_context = start_context, 
-            max_length = max_length, 
+            max_length = max(max_length, len(start_context)), 
             temperature = temperature, 
             top_k = top_k, 
             eos_id = eos_id
         )
+        
         response_text = response_text[len(start_context):].replace("\n### Response:", "").strip()
         return {
             "Start_Context":start_context,
