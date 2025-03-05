@@ -36,7 +36,7 @@ def main():
     sp_tokenizer = SPTokenizer("./data/ChatGLMTokenizer/tokenizer.model")
     preprocessed_dataset = GPTDataset.from_preprocess_files(
         [preprocessed_file_path],
-        max_length=1024,
+        seq_len=1024,
         stride=1024,
         memmap=True,
     )
@@ -54,7 +54,7 @@ def main():
     print("\nCreating train/validation dataloaders...")
     loader = GPTDataLoader(gpt2_tokenizer)
     train_loader, val_loader = loader.file_train_val_dataloader(
-        raw_file_path, train_ratio=0.8, max_length=8, stride=7
+        raw_file_path, train_ratio=0.8, seq_len=8, stride=7
     )
 
     # Display train batches
@@ -73,7 +73,7 @@ def main():
 
     # Generate text dataloader example
     example_text = """"It's the last he painted, you know," Mrs. Gisburn Jiang said with pardonable pride."""
-    text_dataloader = loader.text_dataloader(example_text, batch_size=4, shuffle=True, max_length=4, stride=1)
+    text_dataloader = loader.text_dataloader(example_text, batch_size=4, shuffle=True, seq_len=4, stride=1)
     print("\nText DataLoader Example:")
     for i,(inputs, targets) in enumerate(text_dataloader):
         for input_ids, target_ids in zip(inputs.tolist(), targets.tolist()):
@@ -85,19 +85,19 @@ def main():
     train_dataset = LabeledDataset(
         csv_file="./data/finetune/train.csv",
         tokenizer=gpt2_tokenizer,
-        max_length=None,
+        seq_len=None,
     )
 
     val_dataset = LabeledDataset(
         csv_file="./data/finetune/validation.csv",
         tokenizer=gpt2_tokenizer,
-        max_length=train_dataset.max_length,
+        seq_len=train_dataset.seq_len,
     )
 
     test_dataset = LabeledDataset(
         csv_file="./data/finetune/test.csv",
         tokenizer=gpt2_tokenizer,
-        max_length=train_dataset.max_length,
+        seq_len=train_dataset.seq_len,
     )
 
     # Example: Iterate through test dataset

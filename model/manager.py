@@ -46,6 +46,7 @@ class ModelManager:
                 raise FileNotFoundError(f"Load model error: no such file:{file}")
 
         checkpoint = torch.load(f"{ckpt}/{self.cfg_file}", weights_only=False, map_location="cpu")
+
         if CONFIG_OPERATION(self.model.cfg) != CONFIG_OPERATION(checkpoint["model_cfg"]):
             self.model.cfg.update(CONFIG_OPERATION(checkpoint["model_cfg"]))
             self.model.init(self.model.cfg) #reinitailize model

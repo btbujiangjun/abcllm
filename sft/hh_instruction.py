@@ -18,11 +18,24 @@ ignore_index = -200
 
 #train_file = "../corpus/BAAI_COIG/human_value_alignment_instructions_part1.json"
 train_file = "./data/finetune/huanhuan.json"
+#train_file = "./data/finetune/west_journey.json"
 val_file = "./data/finetune/val-huanhuan.json"
+
+base_model = "data/baike_steps_171000"
+model = GPTModel.from_pretrained(base_model)
+model.cfg["accumulation_steps"] = 1
+
+finetune = InstructionFinetune(model, tokenizer, max_length=128)
+finetune.ignore_index = ignore_index
+
+output_ckpt="./data/tmp/finetune/instruct"
+if os.path.isdir(output_ckpt):
+    finetune.load_lastest(output_ckpt)
 
 train_dataset = InstructionDataset(
     train_file, 
     tokenizer,
+    seq_len=finetune.model.cfg["context_length"],
     ignore_index=ignore_index
 )
 train_loader = ABCDataLoader(
@@ -36,6 +49,7 @@ train_loader = ABCDataLoader(
 val_dataset = InstructionDataset(
     val_file,
     tokenizer,
+    seq_len=finetune.model.cfg["context_length"],
     ignore_index=ignore_index
 )
 val_loader = ABCDataLoader(
@@ -46,21 +60,9 @@ val_loader = ABCDataLoader(
     num_workers=num_workers,
 )
 
-base_model = "data/baike_steps_171000"
-model = GPTModel.from_pretrained(base_model)
-model.cfg["accumulation_steps"] = 1
-
-finetune = InstructionFinetune(model, tokenizer, max_length=128)
-finetune.ignore_index = ignore_index
-
-output_ckpt="./data/tmp/finetune/instruct"
-if os.path.isdir(output_ckpt):
-    finetune.load_lastest(output_ckpt)
-
 with open(val_file, "r", encoding="utf-8") as f:
     items = json.load(f)
 
-"""
 finetune.train(
     train_loader=train_loader, 
     val_loader=val_loader,
@@ -72,7 +74,6 @@ finetune.train(
     dump_path=output_ckpt,
     start_context=InstructionDataset.format_input(items[0], with_output=True)
 )
-"""
 
 with open(train_file, "r", encoding="utf-8") as f:
     items = json.load(f)

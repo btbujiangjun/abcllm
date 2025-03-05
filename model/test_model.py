@@ -23,7 +23,7 @@ def prepare_dataloader(file_path: str, tokenizer, max_length: int = 8, stride: i
     """Prepare train and validation data loaders."""
     loader = GPTDataLoader(tokenizer)
     train_loader, val_loader = loader.file_train_val_dataloader(
-        file_path, train_ratio=train_ratio, max_length=max_length, stride=stride
+        file_path, train_ratio=train_ratio, seq_len=max_length, stride=stride
     )
     print(f"Data Loaders prepared: {len(train_loader)} train batches, {len(val_loader)} val batches")
     return train_loader, val_loader

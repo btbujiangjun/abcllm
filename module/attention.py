@@ -270,8 +270,6 @@ class SlidingWindowAttention(nn.Module):
         mask = self.mask[:self.window_size, :self.window_size] #仅保留滑动窗口
 
         scores = torch.matmul(Q, K.transpose(-2, -1)) / Q.shape[-1] ** 0.5
-        print(f"scores:{scores.shape}")
-        print(f"mask:{mask.shape}")
         scores = scores.masked_fill(mask.bool(), float('-inf'))
 
         attn = torch.softmax(scores, dim=-1)
