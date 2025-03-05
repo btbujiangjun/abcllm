@@ -65,7 +65,7 @@ finetune.train(
 )
 
 for item in items:
-    data = InstructionDataset.format_input(item, with_output=True)
+    data = InstructionDataset.format_input(item, with_output=False)
     response_json = finetune.generate(start_context=data, max_length=50)
     print(f"Start Context:\n{response_json['Start_Context']}\n{'*' * 80}")
     print(f"\nCorrect response:>>\n {item['output']}\n{'*' * 80}")

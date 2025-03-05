@@ -63,6 +63,7 @@ val_loader = ABCDataLoader(
 with open(val_file, "r", encoding="utf-8") as f:
     items = json.load(f)
 
+"""
 finetune.train(
     train_loader=train_loader, 
     val_loader=val_loader,
@@ -74,7 +75,7 @@ finetune.train(
     dump_path=output_ckpt,
     start_context=InstructionDataset.format_input(items[0], with_output=True)
 )
-
+"""
 with open(train_file, "r", encoding="utf-8") as f:
     items = json.load(f)
 
@@ -82,7 +83,7 @@ for item in items:
     data = InstructionDataset.format_input(item, with_output=False)
     response_json = finetune.generate(
         start_context=data,
-        temperature=0.8,
+        temperature=0.0,
         top_k=3,
         max_length=512)
     
