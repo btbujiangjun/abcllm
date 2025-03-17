@@ -72,3 +72,21 @@ class RMSNorm(nn.Module):
         # Normalize and scale
         return (x / rms * self.weight).to(x.dtype)
 
+class DynamicTanhNorm(nn.Module):
+    """
+    https://arxiv.org/pdf/2503.10622
+    preserves the benefits of normalization while reducing computational complexity
+    """
+    def __init__(self, emb_dim:int, init_alpha=0.5):
+        super().__init__()
+        # learnable scaling factor
+        self.alpha = nn.Parameter(torch.ones(1) * init_alpha)
+        # scale parameter
+        self.gamma = nn.Parameter(torch.ones(emb_dim))
+        # shift parameter
+        self.beta = nn.Parameter(torch.zeros(emb_dim))
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        return self.gamma * torch.tanh(self.alpha * x) + self.beta
+
+
