@@ -16,6 +16,7 @@ from module.normalization import LayerNorm
 from module.attention import MultiHeadAttention
 from module.position import AbsolutePositionEmbedding
 from model.abcmodel import ABCModel
+from model.manager import ModelManager
 
 # Default configuration for a GPTModel
 GPT_CONFIG_124M = {
@@ -81,6 +82,14 @@ class GPTModel(ABCModel):
         x = self.trf_blocks(x)
         x = self.final_norm(x)
         return self.out_head(x)
+
+    @staticmethod
+    @torch.no_grad()
+    def from_pretrained(model_path:str) -> ABCModel:
+        model = GPTModel(GPT_CONFIG_124M)
+        manager = ModelManager(model)
+        manager.load(model_path)
+        return model
 
 class TransformerBlock(nn.Module):
     """

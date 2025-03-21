@@ -47,7 +47,6 @@ class Trainer():
         self.rank = rank
         self.num_epochs = 0
         self.global_step = -1
-        self.max_length = None
         self.manager = ModelManager(self.model)
 
     @property
@@ -123,7 +122,7 @@ class Trainer():
 
         accumulation_steps = self.model.cfg["accumulation_steps"]
         max_grad_norm = self.model.cfg["max_grad_norm"]
-        max_length = max_length or self.max_length or self.model.cfg["context_length"]
+        max_length = max_length or self.model.cfg["context_length"]
          
         train_losses, local_losses, val_losses, track_tokens_seen = [], [], [], []
         train_loss, local_loss = 0, 0

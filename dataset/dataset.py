@@ -24,37 +24,37 @@ class GPTDataset(Dataset):
 
     Args:
         token_ids (List[int]): Tokenized input data.
-        max_length (int): Maximum length of each sequence.
+        seq_len (int): Maximum length of each sequence.
         stride (int): Step size for the sliding window.
     """
     def __init__(self
             ,token_ids
-            ,max_length=256
+            ,seq_len=256
             ,stride=1
             ,eos_id=0):
-        if len(token_ids) < max_length - 1:
-            raise ValueError(f"token size({len(token_ids)}) is less then max_length({max_length}).")
+        if len(token_ids) < seq_len - 1:
+            raise ValueError(f"token size({len(token_ids)}) is less then seq_len({seq_len}).")
        
-        self.max_length = max_length
+        self.seq_len = seq_len
         self.stride = stride
         self.eos_id = eos_id
         self.token_ids = token_ids
         self.token_size = len(token_ids)
-        self.len = int((len(token_ids) - max_length) / stride) + 1
+        self.len = (self.token_size - seq_len) // stride + 1
 
     @classmethod
     def from_text(cls
             ,text:str
             ,tokenizer
-            ,max_length=256
+            ,seq_len=256
             ,stride=1):
-        return cls(tokenizer.encode(text), max_length, stride, tokenizer.eos_id)
+        return cls(tokenizer.encode(text), seq_len, stride, tokenizer.eos_id)
 
     @classmethod
     def from_files(cls
             ,files:List[str]
             ,tokenizer
-            ,max_length=256
+            ,seq_len=256
             ,stride=1
             ,encoding="utf-8"):
         text = []
@@ -64,12 +64,12 @@ class GPTDataset(Dataset):
                     text.append(f.read())
             else:
                 warnings.warn(f"{file} does not existed. Skipping.")
-        return cls.from_text("".join(text), tokenizer, max_length, stride)
+        return cls.from_text("".join(text), tokenizer, seq_len, stride)
     
     @classmethod
     def from_preprocess_files(cls
             ,preprocess_files: List[str]
-            ,max_length=256
+            ,seq_len=256
             ,stride=1
             ,memmap=False
             ,dtype="uint16"):
@@ -91,7 +91,7 @@ class GPTDataset(Dataset):
                 else:
                     warnings.warn(f"{file} is not exists and skip it.")
         
-        return cls(token_ids, max_length, stride)
+        return cls(token_ids, seq_len, stride)
                 
 
     def __len__(self):
@@ -111,10 +111,10 @@ class GPTDataset(Dataset):
             raise IndexError(f"Index {idx} is out of bounds for dataset of size {len(self)}.") 
         
         start_index = idx * self.stride
-        end_index = start_index + self.max_length + 1 #for target shift 1
+        end_index = start_index + self.seq_len + 1 #for target shift 1
         
         data_seq = np.asarray(self.token_ids[start_index : end_index], dtype=np.int32)
-        padding_length = max(0, self.max_length + 1 - len(data_seq))
+        padding_length = max(0, self.seq_len + 1 - len(data_seq))
         if padding_length > 0:
             data_seq = np.concatenate([data_seq, np.full(padding_length, self.eos_id)])
 
@@ -151,11 +151,11 @@ class GPTDataLoader():
     def text_dataloader(self
             ,text: str 
             ,batch_size=4
-            ,max_length=256
+            ,seq_len=256
             ,stride=128
             ,shuffle=True
             ,drop_last=True):
-        dataset = GPTDataset.from_text(text, self.tokenizer, max_length, stride)
+        dataset = GPTDataset.from_text(text, self.tokenizer, seq_len, stride)
         return self._create(
             dataset,
             batch_size=batch_size,
@@ -168,7 +168,7 @@ class GPTDataLoader():
             ,file
             ,encoding="utf-8"
             ,batch_size=4
-            ,max_length=256
+            ,seq_len=256
             ,stride=256
             ,shuffle=False
             ,drop_last=True):
@@ -179,7 +179,7 @@ class GPTDataLoader():
         dataset = GPTDataset.from_files(
             file                        
             ,self.tokenizer
-            ,max_length
+            ,seq_len
             ,stride
             ,encoding
         )
@@ -195,7 +195,7 @@ class GPTDataLoader():
     def preprocess_file_dataloader(self
             ,preprocess_files: List[str]
             ,batch_size=4
-            ,max_length=256
+            ,seq_len=256
             ,stride=256
             ,shuffle=False
             ,drop_last=True
@@ -204,7 +204,7 @@ class GPTDataLoader():
         
         dataset = GPTDataset.from_preprocess_files(
             preprocess_files
-            ,max_length=max_length
+            ,seq_len=seq_len
             ,stride=stride
             ,memmap=memmap
             ,dtype=dtype
@@ -223,14 +223,14 @@ class GPTDataLoader():
             ,text
             ,train_ratio=0.9
             ,batch_size=4
-            ,max_length=256
+            ,seq_len=256
             ,stride=128):
         assert train_ratio > 0.0 and train_ratio < 1.0, "train_ratio should in (0.0, 1.0)"
         split_idx = int(len(text) * train_ratio)
         train_text, val_text = text[:split_idx], text[split_idx:]
 
-        train_loader = self.text_dataloader(train_text, batch_size, max_length, stride, shuffle=True, drop_last=True)
-        val_loader = self.text_dataloader(val_text, batch_size, max_length, stride, shuffle=False, drop_last=False)
+        train_loader = self.text_dataloader(train_text, batch_size, seq_len, stride, shuffle=True, drop_last=True)
+        val_loader = self.text_dataloader(val_text, batch_size, seq_len, stride, shuffle=False, drop_last=False)
 
         return train_loader, val_loader
 
@@ -240,7 +240,7 @@ class GPTDataLoader():
             ,encoding="utf-8"
             ,train_ratio=0.9
             ,batch_size=4
-            ,max_length=256
+            ,seq_len=256
             ,stride=128):
         with open(file, "r", encoding="utf-8") as f:
             raw_text = f.read()
@@ -249,7 +249,7 @@ class GPTDataLoader():
             raw_text
             ,train_ratio
             ,batch_size
-            ,max_length
+            ,seq_len
             ,stride
         )
 
@@ -258,7 +258,7 @@ class LabeledDataset(Dataset):
     def __init__(self
             ,csv_file
             ,tokenizer
-            ,max_length=None
+            ,seq_len=None
             ,pad_token_id=None
             ,text_field="Text"
             ,label_field="Label"):
@@ -269,19 +269,19 @@ class LabeledDataset(Dataset):
         if pad_token_id is None:
             pad_token_id = tokenizer.eos_id
 
-        if max_length is None:
-            self.max_length = max([len(encoded_id) for encoded_id in self.encoded_ids])
+        if seq_len is None:
+            self.seq_len = max([len(encoded_id) for encoded_id in self.encoded_ids])
         else:
-            self.max_length = max_length
+            self.seq_len = seq_len
             self.encoded_ids = [
-                encoded_id[:self.max_length] for encoded_id in self.encoded_ids
+                encoded_id[:self.seq_len] for encoded_id in self.encoded_ids
             ]
 
         self.encoded_ids = [
-            encoded_id + [pad_token_id] * (self.max_length - len(encoded_id))
+            encoded_id + [pad_token_id] * (self.seq_len - len(encoded_id))
             for encoded_id in self.encoded_ids
         ]
-        self.token_size = self.max_length * len(self.encoded_ids)
+        self.token_size = self.seq_len * len(self.encoded_ids)
 
     def __getitem__(self, index: int):
         return (
@@ -296,17 +296,17 @@ class InstructionDataset(Dataset):
     def __init__(self, 
             json_file, 
             tokenizer, 
-            max_length=1024, 
+            seq_len=1024, 
             ignore_index=-100, 
             file_encoding="utf-8"
         ):
         with open(json_file, "r", encoding=file_encoding) as f:
             data = json.load(f)
-        self.encoded_ids = [tokenizer.encode(self.format_input(item, with_output=True))[:max_length] for item in data]
+        self.encoded_ids = [tokenizer.encode(self.format_input(item, with_output=True))[:seq_len] for item in data]
             
-        self.max_length = min(max_length, max([len(item) for item in self.encoded_ids]))
+        self.seq_len = min(seq_len, max([len(item) for item in self.encoded_ids]))
         self.tokenizer = tokenizer
-        self.token_size = len(self.encoded_ids) * self.max_length
+        self.token_size = len(self.encoded_ids) * self.seq_len
         self.ignore_index = ignore_index
 
     @staticmethod
@@ -322,7 +322,7 @@ class InstructionDataset(Dataset):
 
     def __getitem__(self, index):
         item = self.encoded_ids[index].copy() + [self.tokenizer.eos_id]
-        item = item + [self.tokenizer.eos_id] * (self.max_length + 1 - len(item))
+        item = item + [self.tokenizer.eos_id] * (self.seq_len + 1 - len(item))
         input_tensor = torch.tensor(item[:-1]) #truncate the last token
         target_tensor = torch.tensor(item[1:]) #shift +1 to the right for targets
        

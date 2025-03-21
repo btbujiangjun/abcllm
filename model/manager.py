@@ -1,12 +1,12 @@
 import os
 import torch
-from model.abcmodel import CONFIG_OPERATION
+from model.abcmodel import ABCModel,CONFIG_OPERATION
 
 class ModelManager:
     """
     To manage saving, loading, and exporting torch models.
     """
-    def __init__(self, model:torch.nn.Module):
+    def __init__(self, model:ABCModel):
         self.model = model
         self.cfg_file = "cfg.ckpt"
         self.model_file = "weights.ckpt"
@@ -46,6 +46,7 @@ class ModelManager:
                 raise FileNotFoundError(f"Load model error: no such file:{file}")
 
         checkpoint = torch.load(f"{ckpt}/{self.cfg_file}", weights_only=False, map_location="cpu")
+
         if CONFIG_OPERATION(self.model.cfg) != CONFIG_OPERATION(checkpoint["model_cfg"]):
             self.model.cfg.update(CONFIG_OPERATION(checkpoint["model_cfg"]))
             self.model.init(self.model.cfg) #reinitailize model

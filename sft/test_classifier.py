@@ -4,7 +4,7 @@ import torch
 from dataset.dataset import ABCDataLoader, LabeledDataset
 from tokenizer.tokenizer import GPT2Tokenizer
 from model.pretrain_gpt2 import PretrainGPT2
-from finetune.classifier import ClassifierFinetune
+from sft.classifier import ClassifierFinetune
 
 
 text = """"It's the last he painted, you know," Mrs. Gisburn Jiang said with pardonable pride."""
@@ -17,19 +17,19 @@ tokenizer = GPT2Tokenizer()
 
 train_dataset = LabeledDataset(
     csv_file="./data/finetune/train.csv",
-    max_length=None,
+    seq_len=None,
     tokenizer=tokenizer
 )
 
 val_dataset = LabeledDataset(
     csv_file="./data/finetune/validation.csv",
-    max_length=train_dataset.max_length,
+    seq_len=train_dataset.seq_len,
     tokenizer=tokenizer
 )
 
 test_dataset = LabeledDataset(
     csv_file="./data/finetune/test.csv",
-    max_length=train_dataset.max_length,
+    seq_len=train_dataset.seq_len,
     tokenizer=tokenizer
 )
 
@@ -93,6 +93,6 @@ texts = (
     "Win a £1000 cash prize or a prize worth £5000"
 )
 for text in texts:
-    predicted_label = "spam" if finetune.generate(text, train_dataset.max_length) else "not spam"
+    predicted_label = "spam" if finetune.generate(text, train_dataset.seq_len) else "not spam"
     print(f"text:\n{text}\npredicted label is:{predicted_label}.")
 

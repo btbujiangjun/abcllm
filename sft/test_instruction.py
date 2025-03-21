@@ -5,7 +5,7 @@ import torch
 from dataset.dataset import InstructionDataset, ABCDataLoader
 from tokenizer.tokenizer import GPT2Tokenizer
 from model.pretrain_gpt2 import PretrainGPT2
-from finetune.instruction import InstructionFinetune
+from sft.instruction import InstructionFinetune
 
 
 torch.manual_seed(123)
@@ -65,7 +65,7 @@ finetune.train(
 )
 
 for item in items:
-    data = InstructionDataset.format_input(item, with_output=True)
+    data = InstructionDataset.format_input(item, with_output=False)
     response_json = finetune.generate(start_context=data, max_length=50)
     print(f"Start Context:\n{response_json['Start_Context']}\n{'*' * 80}")
     print(f"\nCorrect response:>>\n {item['output']}\n{'*' * 80}")

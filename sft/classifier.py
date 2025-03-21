@@ -1,13 +1,29 @@
-#
-# 
-#
-#
-#
+# -*- coding: utf-8 -*-
+"""
+Classifier Fine-Tuning Module
+
+This module defines the `ClassifierFinetune` class, which is used to fine-tune a pre-trained 
+transformer-based model for classification tasks. The model's output head is modified to match 
+the number of target classes, and only specific layers are set to be trainable for efficient tuning.
+
+Author: Jiang Jun
+Date: 2025-02-18
+"""
 
 import torch
 from model.trainer import Trainer
 
 class ClassifierFinetune(Trainer):
+    """
+    A class for fine-tuning a transformer-based model for classification tasks.
+
+    Inherits from the Trainer class and modifies the model by freezing most layers, 
+    replacing the output head with a classification-specific layer, and enabling training 
+    for the last transformer block and final normalization layer.
+
+    Attributes:
+        num_classes (int): The number of target classification classes.
+    """
     def __init__(self, model, tokenizer, num_classes):
         self.num_classes = num_classes
         self._modify_model(model, num_classes)

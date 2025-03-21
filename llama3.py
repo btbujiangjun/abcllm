@@ -60,7 +60,7 @@ def train_worker(
         setup(rank, world_size)
         dataset = GPTDataset.from_preprocess_files(
             [args.train_data],
-            max_length=model_cfg["context_length"],
+            seq_len=model_cfg["context_length"],
             stride=model_cfg["context_length"],
             memmap=True
         )
@@ -72,14 +72,14 @@ def train_worker(
             [args.train_data],
             batch_size=args.batch_size,
             shuffle=True,
-            max_length=model_cfg["context_length"],
+            seq_len=model_cfg["context_length"],
             stride=model_cfg["context_length"]
         )
     
     val_loader = dataloader.preprocess_file_dataloader(
         [args.train_data],
         batch_size=args.batch_size,
-        max_length=model_cfg["context_length"],
+        seq_len=model_cfg["context_length"],
         stride=model_cfg["context_length"]
     )
 
