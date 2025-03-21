@@ -1,7 +1,7 @@
 ## corpus 
 pretrain with ***baidubaike/wiki/wudaocorpus_zh***
 ## split model  
-*split -b 99M weights.ckpt weights_part_*
+`split -b 99M weights.ckpt weights_part_`
 ## merge model 
 *cat weights_part_\* > weights.ckpt*
 ## md5check  
