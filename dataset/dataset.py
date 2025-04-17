@@ -266,17 +266,13 @@ class LabeledDataset(Dataset):
         data = pd.read_csv(csv_file)
         self.encoded_ids, self.labels = zip(*[(tokenizer.encode(text), label) for text, label in zip(data[text_field], data[label_field])])
 
-        if pad_token_id is None:
-            pad_token_id = tokenizer.eos_id
-
+        self.seq_len = seq_len or max([len(encoded_id) for encoded_id in self.encoded_ids])
         if seq_len is None:
-            self.seq_len = max([len(encoded_id) for encoded_id in self.encoded_ids])
-        else:
-            self.seq_len = seq_len
             self.encoded_ids = [
                 encoded_id[:self.seq_len] for encoded_id in self.encoded_ids
             ]
 
+        pad_token_id = pad_token_id or tokenizer.eos_id
         self.encoded_ids = [
             encoded_id + [pad_token_id] * (self.seq_len - len(encoded_id))
             for encoded_id in self.encoded_ids
@@ -300,6 +296,7 @@ class InstructionDataset(Dataset):
             ignore_index=-100, 
             file_encoding="utf-8"
         ):
+        assert os.path.isfile(json_file), f"File {json_file} not found."
         with open(json_file, "r", encoding=file_encoding) as f:
             data = json.load(f)
         self.encoded_ids = [tokenizer.encode(self.format_input(item, with_output=True))[:seq_len] for item in data]
@@ -337,4 +334,39 @@ class InstructionDataset(Dataset):
     def __len__(self):
         return len(self.encoded_ids)
 
+class PreferenceDataset(Dataset):
+    def __init__(self, 
+            json_file, 
+            tokenizer,
+            file_encoding="utf-8",
+        ):
+
+        assert os.path.isfile(json_file), f"File {json_file} not found."
+        with open(json_file, "r", encoding=file_encoding) as f:
+            data = json.load(f)
+        
+        self.encoded_ids = [
+            {
+                "prompt": tokenizer.encode(self.format_input(entry)),
+                "chosen": tokenizer.encode(f"{self.format_input(entry)}\n\n### Response:\n{entry['chosen']}"),
+                "rejected": tokenizer.encode(f"{self.format_input(entry)}\n\n### Response:\n{entry['rejected']}"),
+            } for entry in data
+        ]
+
+
+    @staticmethod
+    def format_input(entry):
+        instruction_text = (
+            f"Below is an instruction that describes a task. "
+            f"Write a response that appropriately completes the request."
+            f"\n\n### Instruction:\n{entry['instruction']}"
+        )
+        input_text = f"\n\n### Input:\n{entry['input']}" if entry["input"] else ""
+        return instruction_text + input_text
+
+    def __getitem__(self, index):
+        return self.encoded_ids[index]
+
+    def __len__(self):
+        return len(self.encoded_ids)
 

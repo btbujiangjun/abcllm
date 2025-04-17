@@ -5,6 +5,7 @@ from dataset.dataset import (
     GPTDataLoader,
     LabeledDataset,
     InstructionDataset,
+    PreferenceDataset,
 )
 from tokenizer.tokenizer import GPT2Tokenizer, SPTokenizer
 
@@ -47,6 +48,11 @@ def main():
             break
         print(f"Train batch {idx}: {batch.tolist()} -> {sp_tokenizer.decode(batch.tolist())}")
         print(f"Target batch {idx}: {target.tolist()} -> {sp_tokenizer.decode(target.tolist())}")
+
+    pfile = "./data/finetune/instruction-data-with-preference.json"
+    pds = PreferenceDataset(pfile, sp_tokenizer)
+    print(f"dataset size:{len(pds)}")
+    print(pds[0])
 
 '''
 
