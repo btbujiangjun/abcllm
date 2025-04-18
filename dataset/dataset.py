@@ -338,21 +338,44 @@ class PreferenceDataset(Dataset):
     def __init__(self, 
             json_file, 
             tokenizer,
+            seq_len=None,
+            mask_prompt=True,
             file_encoding="utf-8",
         ):
+        self.tokenizer = tokenizer
 
         assert os.path.isfile(json_file), f"File {json_file} not found."
         with open(json_file, "r", encoding=file_encoding) as f:
             data = json.load(f)
-        
-        self.encoded_ids = [
-            {
-                "prompt": tokenizer.encode(self.format_input(entry)),
-                "chosen": tokenizer.encode(f"{self.format_input(entry)}\n\n### Response:\n{entry['chosen']}"),
-                "rejected": tokenizer.encode(f"{self.format_input(entry)}\n\n### Response:\n{entry['rejected']}"),
-            } for entry in data
-        ]
 
+        self.encoded_ids = []
+        max_length = 0
+        split_tokens = tokenizer.encode("\n\n")
+
+        for entry in data:
+            prompt = tokenizer.encode(self.format_input(entry))
+            chosen = tokenizer.encode(f"### Response:\n{entry['chosen']}")
+            rejected = tokenizer.encode(f"### Response:\n{entry['rejected']}")
+            
+            if not mask_prompt:
+                chosen = prompt + split_tokens + chosen
+                rejected = prompt + split_tokens + rejected
+
+            if seq_len is not None:
+                prompt = prompt[:seq_len]
+                chosen = chosen[:seq_len]
+                adjected = adjected[:seq_len]
+            else:
+                max_length = max([len(prompt), len(chosen), len(rejected), max_length])
+
+            self.encoded_ids.append({
+                "prompt": prompt,
+                "chosen": chosen,
+                "rejected": rejected,
+            }) 
+                
+        self.max_length = seq_len or max_length
+        self.token_size = len(self.encoded_ids) * self.max_length * 3
 
     @staticmethod
     def format_input(entry):
@@ -365,7 +388,20 @@ class PreferenceDataset(Dataset):
         return instruction_text + input_text
 
     def __getitem__(self, index):
-        return self.encoded_ids[index]
+        data = self.encoded_ids[index]
+        item = {} 
+        
+        for key in data.keys():#["chosen", "rejected"]:
+            tokens = data[key]
+            padded = tokens + [self.tokenizer.eos_id] * (self.max_length - len(tokens))
+            item[key] = torch.tensor(padded)
+            
+            if key in ["chosen", "rejected"]:
+                mask = torch.ones(len(padded)).bool()
+                mask[len(tokens):] = False
+                item[f"{key}_mask"] =  mask
+
+        return item
 
     def __len__(self):
         return len(self.encoded_ids)

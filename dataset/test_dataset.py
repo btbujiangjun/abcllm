@@ -3,6 +3,7 @@ import json
 from dataset.dataset import (
     GPTDataset,
     GPTDataLoader,
+    ABCDataLoader,
     LabeledDataset,
     InstructionDataset,
     PreferenceDataset,
@@ -51,8 +52,27 @@ def main():
 
     pfile = "./data/finetune/instruction-data-with-preference.json"
     pds = PreferenceDataset(pfile, sp_tokenizer)
+
     print(f"dataset size:{len(pds)}")
+    print(f"max_length:{pds.max_length}")
     print(pds[0])
+
+    batch_size = 2
+    num_workers = 1
+    train_loader = ABCDataLoader(
+        dataset=pds,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        drop_last=True,
+    )
+
+    for i, input_batch in enumerate(train_loader):
+        print(f"I:{i}")
+        print(input_batch)
+        #print(f"prompt:{sp_tokenizer.decode(input_batch['prompt'].squeeze(0).tolist())}")
+        #print(f"chosen:{sp_tokenizer.decode(input_batch['chosen'].squeeze(0).tolist())}")
+        #print(f"rejected:{sp_tokenizer.decode(input_batch['rejected'].squeeze(0).tolist())}")
 
 '''
 
