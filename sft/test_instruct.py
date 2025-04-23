@@ -2,10 +2,10 @@ import os
 import sys
 import json
 import torch
-from dataset.dataset import InstructionDataset, ABCDataLoader
+from dataset.dataset import InstructDataset, ABCDataLoader
 from tokenizer.tokenizer import GPT2Tokenizer
 from model.pretrain_gpt2 import PretrainGPT2
-from sft.instruction import InstructionFinetune
+from sft.instruct import InstructTrainer
 
 
 torch.manual_seed(123)
@@ -13,7 +13,7 @@ num_workers = 0
 batch_size = 8
 tokenizer = GPT2Tokenizer()
 ignore_index = -200
-train_dataset = InstructionDataset(
+train_dataset = InstructDataset(
     "./data/finetune/train-instruction-data.json", 
     tokenizer,
     ignore_index=ignore_index
@@ -26,7 +26,7 @@ train_loader = ABCDataLoader(
     num_workers=num_workers,
 )
 
-val_dataset = InstructionDataset(
+val_dataset = InstructDataset(
     "./data/finetune/val-instruction-data.json", 
     tokenizer,
     ignore_index=ignore_index
@@ -42,7 +42,7 @@ val_loader = ABCDataLoader(
 
 pretrain_gpt2 = PretrainGPT2()
 model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2")
-finetune = InstructionFinetune(model, tokenizer, max_length=50)
+finetune = InstructTrainer(model, tokenizer, max_length=50)
 finetune.ignore_index = ignore_index
 
 ckpt="./data/tmp/finetune/instruct"
@@ -61,11 +61,11 @@ finetune.train(
     eval_iter=1,
     sample_iter=1100,
     dump_path=ckpt,
-    start_context=InstructionDataset.format_input(items[0], with_output=True)
+    start_context=InstructDataset.format_input(items[0], with_output=True)
 )
 
 for item in items:
-    data = InstructionDataset.format_input(item, with_output=False)
+    data = InstructDataset.format_input(item, with_output=False)
     response_json = finetune.generate(start_context=data, max_length=50)
     print(f"Start Context:\n{response_json['Start_Context']}\n{'*' * 80}")
     print(f"\nCorrect response:>>\n {item['output']}\n{'*' * 80}")

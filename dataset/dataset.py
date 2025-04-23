@@ -288,7 +288,7 @@ class LabeledDataset(Dataset):
     def __len__(self) -> int:
         return len(self.labels)
 
-class InstructionDataset(Dataset):
+class InstructDataset(Dataset):
     def __init__(self, 
             json_file, 
             tokenizer, 

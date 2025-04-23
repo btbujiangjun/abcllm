@@ -2,7 +2,7 @@
 """
 Instruction Fine-Tuning Module
 
-This module defines the `InstructionFinetune` class, which is designed to fine-tune 
+This module defines the `InstructTrainer` class, which is designed to fine-tune 
 a transformer-based model for instruction-following tasks. It supports loss computation 
 with an ignore index and provides a method for generating responses based on a given prompt.
 
@@ -13,7 +13,7 @@ Date: 2025-02-18
 import torch
 from model.trainer import Trainer
 
-class InstructionFinetune(Trainer):
+class InstructTrainer(Trainer):
     """
     A class for fine-tuning a transformer model to follow instructions.
 

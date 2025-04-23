@@ -2,10 +2,10 @@ import os
 import sys
 import json
 import torch
-from dataset.dataset import InstructionDataset, ABCDataLoader
+from dataset.dataset import InstructDataset, ABCDataLoader
 from tokenizer.tokenizer import SPTokenizer
 from model.gpt import GPTModel
-from sft.instruction import InstructionFinetune
+from sft.instruct import InstructTrainer
 
 
 torch.manual_seed(123)
@@ -32,7 +32,7 @@ output_ckpt="./data/tmp/finetune/instruct"
 if os.path.isdir(output_ckpt):
     finetune.load_lastest(output_ckpt)
 
-train_dataset = InstructionDataset(
+train_dataset = InstructDataset(
     train_file, 
     tokenizer,
     seq_len=finetune.model.cfg["context_length"],
@@ -46,7 +46,7 @@ train_loader = ABCDataLoader(
     num_workers=num_workers,
 )
 
-val_dataset = InstructionDataset(
+val_dataset = InstructDataset(
     val_file,
     tokenizer,
     seq_len=finetune.model.cfg["context_length"],
@@ -73,14 +73,14 @@ finetune.train(
     eval_iter=1,
     sample_iter=10000,
     dump_path=output_ckpt,
-    start_context=InstructionDataset.format_input(items[0], with_output=True)
+    start_context=InstructDataset.format_input(items[0], with_output=True)
 )
 """
 with open(train_file, "r", encoding="utf-8") as f:
     items = json.load(f)
 
 for item in items:
-    data = InstructionDataset.format_input(item, with_output=False)
+    data = InstructDataset.format_input(item, with_output=False)
     response_json = finetune.generate(
         start_context=data,
         temperature=0.0,

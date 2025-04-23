@@ -4,7 +4,7 @@ import torch
 from dataset.dataset import ABCDataLoader, LabeledDataset
 from tokenizer.tokenizer import GPT2Tokenizer
 from model.pretrain_gpt2 import PretrainGPT2
-from sft.classifier import ClassifierFinetune
+from sft.classifier import ClassifierTrainer
 
 
 text = """"It's the last he painted, you know," Mrs. Gisburn Jiang said with pardonable pride."""
@@ -58,7 +58,7 @@ test_loader = ABCDataLoader(
 ckpt="./data/tmp/finetune/spam_finetune"
 pretrain_gpt2 = PretrainGPT2()
 model = pretrain_gpt2.load_tf_ckpt("gpt2-small (124M)", "./data/pretrain_gpt2", dtype=torch.float32)
-finetune = ClassifierFinetune(model, tokenizer, num_classes=2)
+finetune = ClassifierTrainer(model, tokenizer, num_classes=2)
 finetune.train(
     train_loader, 
     val_loader,

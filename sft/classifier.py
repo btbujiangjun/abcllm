@@ -13,7 +13,7 @@ Date: 2025-02-18
 import torch
 from model.trainer import Trainer
 
-class ClassifierFinetune(Trainer):
+class ClassifierTrainer(Trainer):
     """
     A class for fine-tuning a transformer-based model for classification tasks.
 

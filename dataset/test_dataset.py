@@ -57,7 +57,7 @@ def main():
     print(f"max_length:{pds.max_length}")
     print(pds[0])
 
-    batch_size = 2
+    batch_size = 8
     num_workers = 1
     train_loader = ABCDataLoader(
         dataset=pds,
@@ -68,8 +68,11 @@ def main():
     )
 
     for i, input_batch in enumerate(train_loader):
-        print(f"I:{i}")
-        print(input_batch)
+        #print(f"I:{i}")
+        #print(input_batch)
+        print(f"{input_batch['prompt'].shape}")
+        print(f"{input_batch['chosen'].shape}")
+        print(f"{input_batch['rejected'].shape}")
         #print(f"prompt:{sp_tokenizer.decode(input_batch['prompt'].squeeze(0).tolist())}")
         #print(f"chosen:{sp_tokenizer.decode(input_batch['chosen'].squeeze(0).tolist())}")
         #print(f"rejected:{sp_tokenizer.decode(input_batch['rejected'].squeeze(0).tolist())}")
