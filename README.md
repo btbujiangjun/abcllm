@@ -1,5 +1,5 @@
 # Overview
-ABCLLM is a comprehensive framework for training, fine-tuning, and using large language models (LLMs). The repository implements both GPT-style and Llama3-style transformer architectures with supporting infrastructure for efficient training, data processing, model management, and text generation.
+`ABCLLM` is a comprehensive framework for training, fine-tuning, and using large language models (LLMs). The repository implements both GPT-style and Llama3-style transformer architectures with supporting infrastructure for efficient training, data processing, model management, and text generation.
 
 # Purpose and Scope
 This repository provides a modular and extensible platform for working with transformer-based language models with the following core capabilities:
