@@ -169,8 +169,8 @@ class FocalLoss(nn.Module):
             targets, 
             reduction='none'
         )
-        pt = torch.exp(-bce_loss) # Probability of true class
-        focal_loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
+        prob_true = torch.exp(-bce_loss) # Probability of true class
+        focal_loss = self.alpha * (1 - prob_true) ** self.gamma * bce_loss
 
         if self.reduction == 'mean':
             return focal_loss.mean()
