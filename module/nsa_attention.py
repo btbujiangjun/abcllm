@@ -67,13 +67,9 @@ class NSAAttention(nn.Module):
 
     def _compress_tokens(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Compresses token sequences into block-level representations using an MLP.
-
-        Args:
-            x (torch.Tensor): Input tensor (batch_size, seq_len, d_model).
-
-        Returns:
-            torch.Tensor: Compressed representations (batch_size, num_blocks, d_model).
+        Compresses token sequences into block-level(maybe overlap) representations using an MLP.
+        x: Input tensor (batch_size, seq_len, d_model).
+        output: Compressed representations (batch_size, num_blocks, d_model).
         """
         batch_size, seq_len, _ = x.size()
         num_blocks = (seq_len - self.compress_block_size) // self.compress_block_sliding_stride + 1
@@ -92,14 +88,11 @@ class NSAAttention(nn.Module):
     def _select_blocks(self, compressed: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Selects the most relevant blocks based on importance scores.
-
-        Args:
-            compressed (torch.Tensor): Compressed representations (batch_size, num_blocks, d_model).
-
+        compressed (torch.Tensor): Compressed representations (batch_size, num_blocks, d_model).
         Returns:
             tuple: (selected_blocks, selected_indices)
-                - selected_blocks (torch.Tensor): Selected block representations.
-                - selected_indices (torch.Tensor): Indices of selected blocks.
+                - selected_blocks: Selected block representations.
+                - selected_indices: Indices of selected blocks.
         """
         batch_size, num_blocks, _ = compressed.size()
 
@@ -118,14 +111,10 @@ class NSAAttention(nn.Module):
     def _sliding_window_attention(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
         """
         Applies sliding window attention for local context.
-
-        Args:
-            q (torch.Tensor): Query tensor (batch_size, num_heads, seq_len, d_head).
-            k (torch.Tensor): Key tensor (batch_size, num_heads, seq_len, d_head).
-            v (torch.Tensor): Value tensor (batch_size, num_heads, seq_len, d_head).
-
-        Returns:
-            torch.Tensor: Sliding window attention output (batch_size, num_heads, seq_len, d_head).
+        q: Query tensor (batch_size, num_heads, seq_len, d_head).
+        k: Key tensor (batch_size, num_heads, seq_len, d_head).
+        v: Value tensor (batch_size, num_heads, seq_len, d_head).
+        Returns: Sliding window attention output (batch_size, num_heads, seq_len, d_head).
         """
         batch_size, num_heads, seq_len, d_head = q.size()
         output = torch.zeros_like(q)
